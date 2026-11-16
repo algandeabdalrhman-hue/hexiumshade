@@ -1,0 +1,42 @@
+name: HexiumShade iOS Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Xcode
+        run: xcodebuild -version
+
+      - name: Build iOS arm64
+        run: |
+          xcodebuild \
+            -project HexiumShade.xcodeproj \
+            -target HexiumShade \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 \
+            build
+
+      - name: Package library
+        run: |
+          mkdir -p output
+          find build/Build/Products -name "libHexiumShade.dylib" -exec cp {} output/ \;
+          test -f output/libHexiumShade.dylib
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HexiumShade-iOS-arm64
+          path: output/libHexiumShade.dylib
