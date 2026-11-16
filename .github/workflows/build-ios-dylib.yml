@@ -17,6 +17,10 @@ jobs:
       - name: Check Xcode
         run: xcodebuild -version
 
+      - name: List project schemes
+        run: |
+          xcodebuild -list -project HexiumShade.xcodeproj
+
       - name: Build iOS arm64
         run: |
           xcodebuild \
@@ -24,15 +28,17 @@ jobs:
             -target HexiumShade \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             ARCHS=arm64 \
             build
 
-      - name: Package library
+      - name: Find compiled library
         run: |
           mkdir -p output
-          find build/Build/Products -name "libHexiumShade.dylib" -exec cp {} output/ \;
+          find ~/Library/Developer/Xcode/DerivedData build \
+            -name "libHexiumShade.dylib" \
+            -type f \
+            -exec cp {} output/ \; 2>/dev/null || true
           test -f output/libHexiumShade.dylib
 
       - name: Upload artifact
