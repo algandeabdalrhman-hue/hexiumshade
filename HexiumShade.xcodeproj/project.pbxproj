@@ -1,3 +1,4 @@
+
 // !$*UTF8*$!
 {
     archiveVersion = 1;
@@ -13,6 +14,21 @@
         A10000000000000000000002 = {
             isa = PBXBuildFile;
             fileRef = A20000000000000000000003;
+        };
+
+        A10000000000000000000003 = {
+            isa = PBXBuildFile;
+            fileRef = A20000000000000000000006;
+        };
+
+        A10000000000000000000004 = {
+            isa = PBXBuildFile;
+            fileRef = A20000000000000000000008;
+        };
+
+        A10000000000000000000005 = {
+            isa = PBXBuildFile;
+            fileRef = A20000000000000000000009;
         };
 
         A20000000000000000000001 = {
@@ -50,11 +66,42 @@
             sourceTree = BUILT_PRODUCTS_DIR;
         };
 
+        A20000000000000000000006 = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.c.objc;
+            path = HexiumShadeOverlay.m;
+            sourceTree = "<group>";
+        };
+
+        A20000000000000000000007 = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.c.h;
+            path = HexiumShadeOverlay.h;
+            sourceTree = "<group>";
+        };
+
+        A20000000000000000000008 = {
+            isa = PBXFileReference;
+            lastKnownFileType = wrapper.framework;
+            name = UIKit.framework;
+            path = System/Library/Frameworks/UIKit.framework;
+            sourceTree = SDKROOT;
+        };
+
+        A20000000000000000000009 = {
+            isa = PBXFileReference;
+            lastKnownFileType = wrapper.framework;
+            name = UniformTypeIdentifiers.framework;
+            path = System/Library/Frameworks/UniformTypeIdentifiers.framework;
+            sourceTree = SDKROOT;
+        };
+
         A30000000000000000000001 = {
             isa = PBXGroup;
             children = (
                 A30000000000000000000002,
                 A20000000000000000000005,
+                A30000000000000000000003,
             );
             sourceTree = "<group>";
         };
@@ -68,7 +115,19 @@
                 A20000000000000000000002,
                 A20000000000000000000003,
                 A20000000000000000000004,
+                A20000000000000000000006,
+                A20000000000000000000007,
             );
+        };
+
+        A30000000000000000000003 = {
+            isa = PBXGroup;
+            name = Frameworks;
+            children = (
+                A20000000000000000000008,
+                A20000000000000000000009,
+            );
+            sourceTree = "<group>";
         };
 
         A40000000000000000000001 = {
@@ -77,6 +136,7 @@
             files = (
                 A10000000000000000000001,
                 A10000000000000000000002,
+                A10000000000000000000003,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };
@@ -84,15 +144,17 @@
         A40000000000000000000002 = {
             isa = PBXFrameworksBuildPhase;
             buildActionMask = 2147483647;
-            files = ();
+            files = (
+                A10000000000000000000004,
+                A10000000000000000000005,
+            );
             runOnlyForDeploymentPostprocessing = 0;
         };
 
         A40000000000000000000003 = {
             isa = PBXResourcesBuildPhase;
             buildActionMask = 2147483647;
-            files = (
-            );
+            files = ();
             runOnlyForDeploymentPostprocessing = 0;
         };
 
