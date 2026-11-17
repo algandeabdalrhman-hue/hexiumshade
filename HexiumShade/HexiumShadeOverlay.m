@@ -10,7 +10,9 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
 @property (nonatomic, strong) UIView *panel;
 @property (nonatomic, strong) UIButton *cube;
 @property (nonatomic, strong) UIScrollView *scroll;
-@property (nonatomic, strong) NSMutableArray<NSString *> *iniLines;\n@property (nonatomic, strong) UILabel *qualityLabel;\n@property (nonatomic, copy) NSString *selectedQuality;
+@property (nonatomic, strong) NSMutableArray<NSString *> *iniLines;
+@property (nonatomic, strong) UILabel *qualityLabel;
+@property (nonatomic, copy) NSString *selectedQuality;
 @end
 
 @implementation HexiumShadeOverlay
@@ -103,9 +105,20 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
     [self.panel addSubview:[self button:@"＋ Import INI" frame:CGRectMake(10, 55, 100, 35) action:@selector(importPreset)]];
     [self.panel addSubview:[self button:@"Export" frame:CGRectMake(118, 55, 85, 35) action:@selector(exportPreset)]];
     [self.panel addSubview:[self button:@"Apply" frame:CGRectMake(211, 55, 119, 35) action:@selector(applyPreset)]];
-    UILabel *quality = [self label:@"QUALITY: Custom" frame:CGRectMake(12, 98, 200, 25)];
-    quality.textColor = [UIColor colorWithRed:0.65 green:0.79 blue:1 alpha:1];
-    [self.panel addSubview:quality];
+    self.qualityLabel = [self label:@"QUALITY: Medium" frame:CGRectMake(12, 96, 200, 24)];
+    self.qualityLabel.textColor = [UIColor colorWithRed:0.65 green:0.79 blue:1 alpha:1];
+    self.selectedQuality = @"Medium";
+    [self.panel addSubview:self.qualityLabel];
+
+    NSArray *names = @[@"Low", @"Medium", @"High", @"Ultra"];
+    CGFloat x = 10.0;
+    for (NSInteger i = 0; i < names.count; i++) {
+        UIButton *preset = [self button:names[i] frame:CGRectMake(x, 124, 77, 31) action:@selector(selectQuality:)];
+        preset.tag = i;
+        if (i == 1) preset.backgroundColor = [UIColor colorWithRed:0.12 green:0.48 blue:0.82 alpha:1];
+        [self.panel addSubview:preset];
+        x += 82.0;
+    }
 }
 
 - (void)selectQuality:(UIButton *)sender {
@@ -114,14 +127,14 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
         @{@"Quality":@0, @"Bloom":@0, @"Sharpen":@0, @"ColorCorrection":@1, @"AmbientLight":@0,
           @"Exposure":@0.0, @"Contrast":@1.0, @"Saturation":@1.0, @"BloomIntensity":@0.0,
           @"SharpenAmount":@0.0, @"AmbientIntensity":@0.0},
-        @{@"Quality":@1, @"Bloom":@1, @"Sharpen":@0, @"ColorCorrection":@1, @"AmbientLight":@0,
-          @"Exposure":@0.04, @"Contrast":@1.04, @"Saturation":@1.04, @"BloomIntensity":@0.18,
+        @{@"Quality":@1, @"Bloom":@0, @"Sharpen":@0, @"ColorCorrection":@1, @"AmbientLight":@0,
+          @"Exposure":@0.02, @"Contrast":@1.02, @"Saturation":@1.0, @"BloomIntensity":@0.0,
           @"SharpenAmount":@0.12, @"AmbientIntensity":@0.04},
-        @{@"Quality":@2, @"Bloom":@1, @"Sharpen":@1, @"ColorCorrection":@1, @"AmbientLight":@1,
-          @"Exposure":@0.08, @"Contrast":@1.08, @"Saturation":@1.08, @"BloomIntensity":@0.32,
+        @{@"Quality":@2, @"Bloom":@0, @"Sharpen":@1, @"ColorCorrection":@1, @"AmbientLight":@1,
+          @"Exposure":@0.03, @"Contrast":@1.05, @"Saturation":@1.02, @"BloomIntensity":@0.0,
           @"SharpenAmount":@0.28, @"AmbientIntensity":@0.10},
         @{@"Quality":@3, @"Bloom":@1, @"Sharpen":@1, @"ColorCorrection":@1, @"AmbientLight":@1,
-          @"Exposure":@0.12, @"Contrast":@1.12, @"Saturation":@1.14, @"BloomIntensity":@0.48,
+          @"Exposure":@0.05, @"Contrast":@1.06, @"Saturation":@1.04, @"BloomIntensity":@0.10,
           @"SharpenAmount":@0.42, @"AmbientIntensity":@0.14}
     ];
     self.selectedQuality = names[sender.tag];
