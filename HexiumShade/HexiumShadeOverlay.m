@@ -1,54 +1,43 @@
-
 #import "HexiumShadeOverlay.h"
+#import "HexiumShade.h"
 #import <objc/runtime.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <math.h>
+
+static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
 
 @interface HexiumShadeOverlay () <UIDocumentPickerDelegate>
-
 @property (nonatomic, strong) UIView *panel;
 @property (nonatomic, strong) UIButton *cube;
 @property (nonatomic, strong) UIScrollView *scroll;
 @property (nonatomic, strong) NSMutableArray<NSString *> *iniLines;
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *effects;
-
 @end
 
 @implementation HexiumShadeOverlay
 
++ (void)setApplyHandler:(HexiumShadeApplyHandler)handler {
+    HexiumCurrentApplyHandler = [handler copy];
+}
+
 + (void)showOverlay {
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
-
         if (!window) return;
-
         HexiumShadeOverlay *overlay = [HexiumShadeOverlay new];
-
-        objc_setAssociatedObject(window,
-                                 "HexiumShadeOverlay",
-                                 overlay,
-                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-
+        objc_setAssociatedObject(window, "HexiumShadeOverlay", overlay, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         [overlay buildInterfaceInWindow:window];
     });
 }
 
 - (void)buildInterfaceInWindow:(UIWindow *)window {
     self.iniLines = [NSMutableArray array];
-    self.effects = [NSMutableDictionary dictionary];
-
     self.panel = [[UIView alloc] initWithFrame:CGRectMake(35, 100, 340, 520)];
-    self.panel.backgroundColor =
-    [UIColor colorWithRed:0.035 green:0.075 blue:0.15 alpha:0.97];
-
+    self.panel.backgroundColor = [UIColor colorWithRed:0.035 green:0.075 blue:0.15 alpha:0.97];
     self.panel.layer.cornerRadius = 15;
     self.panel.layer.borderWidth = 1;
-    self.panel.layer.borderColor =
-    [UIColor colorWithRed:0.18 green:0.43 blue:0.78 alpha:1].CGColor;
-
+    self.panel.layer.borderColor = [UIColor colorWithRed:0.18 green:0.43 blue:0.78 alpha:1].CGColor;
     self.panel.clipsToBounds = YES;
-
     [window addSubview:self.panel];
-
     [self buildHeader];
     [self buildButtons];
     [self buildScrollView];
@@ -64,89 +53,43 @@
 
 - (UIButton *)button:(NSString *)title frame:(CGRect)frame action:(SEL)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-
     button.frame = frame;
     [button setTitle:title forState:UIControlStateNormal];
     [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-
-    button.backgroundColor =
-    [UIColor colorWithRed:0.07 green:0.30 blue:0.59 alpha:1];
-
+    button.backgroundColor = [UIColor colorWithRed:0.07 green:0.30 blue:0.59 alpha:1];
     button.layer.cornerRadius = 7;
     button.titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightBold];
-
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-
     return button;
 }
 
 - (void)buildHeader {
     UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 340, 45)];
-
-    header.backgroundColor =
-    [UIColor colorWithRed:0.06 green:0.16 blue:0.32 alpha:1];
-
+    header.backgroundColor = [UIColor colorWithRed:0.06 green:0.16 blue:0.32 alpha:1];
     [self.panel addSubview:header];
-
-    UILabel *title =
-    [self label:@"HEXIUM GRAPHICS" frame:CGRectMake(13, 0, 190, 45)];
-
-    title.textColor =
-    [UIColor colorWithRed:0.62 green:0.79 blue:1 alpha:1];
-
+    UILabel *title = [self label:@"HEXIUM GRAPHICS" frame:CGRectMake(13, 0, 190, 45)];
+    title.textColor = [UIColor colorWithRed:0.62 green:0.79 blue:1 alpha:1];
     title.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBlack];
-
     [header addSubview:title];
-
-    UIButton *minimize =
-    [self button:@"−"
-           frame:CGRectMake(298, 7, 32, 30)
-          action:@selector(minimizePanel)];
-
-    [header addSubview:minimize];
-
-    UIPanGestureRecognizer *pan =
-    [[UIPanGestureRecognizer alloc] initWithTarget:self
-                                            action:@selector(dragPanel:)];
-
+    [header addSubview:[self button:@"−" frame:CGRectMake(298, 7, 32, 30) action:@selector(minimizePanel)]];
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)];
     [header addGestureRecognizer:pan];
 }
 
 - (void)buildButtons {
-    [self.panel addSubview:
-     [self button:@"＋ Import INI"
-            frame:CGRectMake(10, 55, 100, 35)
-           action:@selector(importPreset)]];
-
-    [self.panel addSubview:
-     [self button:@"Export"
-            frame:CGRectMake(118, 55, 85, 35)
-           action:@selector(exportPreset)]];
-
-    [self.panel addSubview:
-     [self button:@"Apply"
-            frame:CGRectMake(211, 55, 119, 35)
-           action:@selector(applyPreset)]];
-
-    UILabel *quality =
-    [self label:@"QUALITY: Custom" frame:CGRectMake(12, 98, 200, 25)];
-
-    quality.textColor =
-    [UIColor colorWithRed:0.65 green:0.79 blue:1 alpha:1];
-
+    [self.panel addSubview:[self button:@"＋ Import INI" frame:CGRectMake(10, 55, 100, 35) action:@selector(importPreset)]];
+    [self.panel addSubview:[self button:@"Export" frame:CGRectMake(118, 55, 85, 35) action:@selector(exportPreset)]];
+    [self.panel addSubview:[self button:@"Apply" frame:CGRectMake(211, 55, 119, 35) action:@selector(applyPreset)]];
+    UILabel *quality = [self label:@"QUALITY: Custom" frame:CGRectMake(12, 98, 200, 25)];
+    quality.textColor = [UIColor colorWithRed:0.65 green:0.79 blue:1 alpha:1];
     [self.panel addSubview:quality];
 }
 
 - (void)buildScrollView {
-    self.scroll = [[UIScrollView alloc]
-                   initWithFrame:CGRectMake(8, 130, 324, 380)];
-
+    self.scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(8, 130, 324, 380)];
     self.scroll.backgroundColor = UIColor.clearColor;
-
     [self.panel addSubview:self.scroll];
-
-    [self addLabel:@"Import an INI preset to begin."
-             frame:CGRectMake(10, 10, 300, 30)];
+    [self addLabel:@"Import an INI preset to begin." frame:CGRectMake(10, 10, 300, 30)];
 }
 
 - (void)addLabel:(NSString *)text frame:(CGRect)frame {
@@ -155,229 +98,167 @@
 
 - (void)minimizePanel {
     self.panel.hidden = YES;
-
-    self.cube =
-    [self button:@"H"
-           frame:CGRectMake(35, 100, 45, 45)
-          action:@selector(restorePanel)];
-
+    self.cube = [self button:@"H" frame:CGRectMake(35, 100, 45, 45) action:@selector(restorePanel)];
     self.cube.layer.cornerRadius = 12;
     self.cube.titleLabel.font = [UIFont boldSystemFontOfSize:18];
-
     [self.panel.superview addSubview:self.cube];
 }
 
 - (void)restorePanel {
     self.panel.hidden = NO;
-
     [self.cube removeFromSuperview];
     self.cube = nil;
 }
 
 - (void)dragPanel:(UIPanGestureRecognizer *)gesture {
-    CGPoint translation =
-    [gesture translationInView:self.panel.superview];
-
-    self.panel.center =
-    CGPointMake(self.panel.center.x + translation.x,
-                self.panel.center.y + translation.y);
-
-    [gesture setTranslation:CGPointMake(0, 0)
-                     inView:self.panel.superview];
+    CGPoint translation = [gesture translationInView:self.panel.superview];
+    self.panel.center = CGPointMake(self.panel.center.x + translation.x, self.panel.center.y + translation.y);
+    [gesture setTranslation:CGPointMake(0, 0) inView:self.panel.superview];
 }
 
 - (void)importPreset {
-    UIDocumentPickerViewController *picker =
-    [[UIDocumentPickerViewController alloc]
-     initForOpeningContentTypes:@[UTTypePlainText]
-     asCopy:YES];
-
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypePlainText] asCopy:YES];
     picker.delegate = self;
-
-    UIWindow *window = self.panel.window;
-    UIViewController *controller = window.rootViewController;
-
-    while (controller.presentedViewController) {
-        controller = controller.presentedViewController;
-    }
-
-    [controller presentViewController:picker
-                              animated:YES
-                            completion:nil];
+    UIViewController *controller = self.panel.window.rootViewController;
+    while (controller.presentedViewController) controller = controller.presentedViewController;
+    [controller presentViewController:picker animated:YES completion:nil];
 }
 
-- (void)documentPicker:(UIDocumentPickerViewController *)controller
-didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
-
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
     if (!url) return;
-
     BOOL accessed = [url startAccessingSecurityScopedResource];
-
     NSError *error = nil;
-
-    NSString *contents =
-    [NSString stringWithContentsOfURL:url
-                             encoding:NSUTF8StringEncoding
-                                error:&error];
-
-    if (accessed) {
-        [url stopAccessingSecurityScopedResource];
+    NSString *contents = [NSString stringWithContentsOfURL:url encoding:NSUTF8StringEncoding error:&error];
+    if (accessed) [url stopAccessingSecurityScopedResource];
+    if (error || !contents) {
+        [self showMessage:@"Import failed" message:error.localizedDescription ?: @"Could not read this file."];
+        return;
     }
-
-    if (error || !contents) return;
-
-    self.iniLines =
-    [[contents componentsSeparatedByString:@"\n"] mutableCopy];
-
+    self.iniLines = [[contents componentsSeparatedByString:@"\n"] mutableCopy];
     [self renderPreset];
 }
 
 - (void)renderPreset {
-    for (UIView *view in self.scroll.subviews) {
-        [view removeFromSuperview];
-    }
-
+    for (UIView *view in self.scroll.subviews) [view removeFromSuperview];
     CGFloat y = 8;
-
     for (NSUInteger index = 0; index < self.iniLines.count; index++) {
         NSString *line = self.iniLines[index];
-
-        NSString *trimmed =
-        [line stringByTrimmingCharactersInSet:
-         NSCharacterSet.whitespaceCharacterSet];
-
+        NSString *trimmed = [line stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
         if (trimmed.length == 0) continue;
-
         if ([trimmed hasPrefix:@"["] && [trimmed hasSuffix:@"]"]) {
-            UILabel *section =
-            [self label:trimmed frame:CGRectMake(8, y, 300, 28)];
-
-            section.textColor =
-            [UIColor colorWithRed:0.55 green:0.76 blue:1 alpha:1];
-
+            UILabel *section = [self label:trimmed frame:CGRectMake(8, y, 300, 28)];
+            section.textColor = [UIColor colorWithRed:0.55 green:0.76 blue:1 alpha:1];
             [self.scroll addSubview:section];
-
             y += 32;
             continue;
         }
-
         NSRange separator = [trimmed rangeOfString:@"="];
-
         if (separator.location == NSNotFound) continue;
-
-        NSString *key =
-        [[trimmed substringToIndex:separator.location]
-         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
-
-        NSString *value =
-        [[trimmed substringFromIndex:separator.location + 1]
-         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
-
-        UILabel *name =
-        [self label:key frame:CGRectMake(8, y, 155, 32)];
-
+        NSString *key = [[trimmed substringToIndex:separator.location] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
+        NSString *value = [[trimmed substringFromIndex:separator.location + 1] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
+        UILabel *name = [self label:key frame:CGRectMake(8, y, 155, 32)];
         name.font = [UIFont systemFontOfSize:10];
-
         [self.scroll addSubview:name];
-
-        UITextField *field =
-        [[UITextField alloc] initWithFrame:CGRectMake(165, y, 145, 30)];
-
+        UITextField *field = [[UITextField alloc] initWithFrame:CGRectMake(165, y, 145, 30)];
         field.text = value;
         field.textColor = UIColor.whiteColor;
         field.font = [UIFont systemFontOfSize:10];
-
-        field.backgroundColor =
-        [UIColor colorWithWhite:0.03 alpha:1];
-
+        field.backgroundColor = [UIColor colorWithWhite:0.03 alpha:1];
         field.layer.cornerRadius = 5;
         field.layer.borderWidth = 1;
-
-        field.layer.borderColor =
-        [UIColor colorWithWhite:0.25 alpha:1].CGColor;
-
-        field.leftView =
-        [[UIView alloc] initWithFrame:CGRectMake(0, 0, 5, 0)];
-
+        field.layer.borderColor = [UIColor colorWithWhite:0.25 alpha:1].CGColor;
+        field.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 5, 0)];
         field.leftViewMode = UITextFieldViewModeAlways;
         field.tag = (NSInteger)index;
-
         [self.scroll addSubview:field];
-
         y += 38;
     }
-
     self.scroll.contentSize = CGSizeMake(324, y + 10);
 }
 
 - (NSString *)updatedINI {
     NSMutableArray *output = [self.iniLines mutableCopy];
-
     for (UIView *view in self.scroll.subviews) {
         if (![view isKindOfClass:UITextField.class]) continue;
-
         UITextField *field = (UITextField *)view;
         NSInteger index = field.tag;
-
         if (index < 0 || index >= (NSInteger)output.count) continue;
-
         NSString *original = output[index];
-
         NSRange separator = [original rangeOfString:@"="];
-
         if (separator.location == NSNotFound) continue;
-
         NSString *key = [original substringToIndex:separator.location];
-
-        output[index] =
-        [NSString stringWithFormat:@"%@=%@", key, field.text ?: @""];
+        output[index] = [NSString stringWithFormat:@"%@=%@", key, field.text ?: @""];
     }
-
     return [output componentsJoinedByString:@"\n"];
 }
 
 - (void)exportPreset {
     NSString *contents = [self updatedINI];
-
-    NSURL *directory =
-    [NSURL fileURLWithPath:NSTemporaryDirectory()
-               isDirectory:YES];
-
-    NSURL *file =
-    [directory URLByAppendingPathComponent:@"Hexium-Edited.ini"];
-
+    NSURL *directory = [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES];
+    NSURL *file = [directory URLByAppendingPathComponent:@"Hexium-Edited.ini"];
     NSError *error = nil;
-
-    [contents writeToURL:file
-              atomically:YES
-                encoding:NSUTF8StringEncoding
-                   error:&error];
-
+    [contents writeToURL:file atomically:YES encoding:NSUTF8StringEncoding error:&error];
     if (error) {
-        NSLog(@"HexiumShade export error: %@", error);
+        [self showMessage:@"Export failed" message:error.localizedDescription];
         return;
     }
-
-    UIActivityViewController *share =
-    [[UIActivityViewController alloc]
-     initWithActivityItems:@[file]
-     applicationActivities:nil];
-
+    UIActivityViewController *share = [[UIActivityViewController alloc] initWithActivityItems:@[file] applicationActivities:nil];
     UIViewController *controller = self.panel.window.rootViewController;
+    while (controller.presentedViewController) controller = controller.presentedViewController;
+    [controller presentViewController:share animated:YES completion:nil];
+}
 
-    while (controller.presentedViewController) {
-        controller = controller.presentedViewController;
+- (NSDictionary<NSString *, NSNumber *> *)rendererOptionsFromINI:(NSString *)ini {
+    NSDictionary<NSString *, NSString *> *values = [HexiumShade parseINI:ini];
+    NSArray *booleanKeys = @[@"Bloom", @"Sharpen", @"ColorCorrection", @"AmbientLight"];
+    NSArray *numberKeys = @[@"Exposure", @"Contrast", @"Saturation", @"BloomIntensity", @"SharpenAmount", @"AmbientIntensity"];
+    NSMutableDictionary *options = [NSMutableDictionary dictionary];
+
+    for (NSString *key in booleanKeys) {
+        NSString *value = [values[key] lowercaseString];
+        options[key] = @([@[@"1", @"true", @"yes", @"on", @"enabled"] containsObject:value]);
     }
-
-    [controller presentViewController:share
-                              animated:YES
-                            completion:nil];
+    for (NSString *key in numberKeys) {
+        NSString *value = values[key];
+        if (value.length == 0) continue;
+        NSScanner *scanner = [NSScanner scannerWithString:value];
+        float number = 0;
+        if ([scanner scanFloat:&number] && scanner.isAtEnd && isfinite(number)) options[key] = @(number);
+    }
+    return options;
 }
 
 - (void)applyPreset {
-    // The edited INI is ready for your own renderer integration.
-    NSLog(@"HexiumShade: preset prepared for renderer.");
+    if (self.iniLines.count == 0) {
+        [self showMessage:@"No preset loaded" message:@"Import an INI file before applying settings."];
+        return;
+    }
+    HexiumShadeApplyHandler handler = HexiumCurrentApplyHandler;
+    if (!handler) {
+        [self showMessage:@"Renderer not connected" message:@"The host app must register its own Metal renderer callback before Apply can process a frame."];
+        return;
+    }
+    NSDictionary *options = [self rendererOptionsFromINI:[self updatedINI]];
+    __weak typeof(self) weakSelf = self;
+    handler(options, ^(BOOL success, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (success) {
+                [weakSelf showMessage:@"Settings submitted" message:@"The host renderer reported that the frame was processed."];
+            } else {
+                [weakSelf showMessage:@"Apply failed" message:error.localizedDescription ?: @"The host renderer could not process the frame."];
+            }
+        });
+    });
+}
+
+- (void)showMessage:(NSString *)title message:(NSString *)message {
+    UIViewController *controller = self.panel.window.rootViewController;
+    while (controller.presentedViewController) controller = controller.presentedViewController;
+    if (!controller) return;
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [controller presentViewController:alert animated:YES completion:nil];
 }
 
 @end
