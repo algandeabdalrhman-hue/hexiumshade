@@ -21,7 +21,30 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
 
 + (void)showOverlay {
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
+        UIWindow *window = nil;
+
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (scene.activationState != UISceneActivationStateForegroundActive ||
+                ![scene isKindOfClass:UIWindowScene.class]) {
+                continue;
+            }
+            for (UIWindow *candidate in ((UIWindowScene *)scene).windows) {
+                if (candidate.isKeyWindow) {
+                    window = candidate;
+                    break;
+                }
+            }
+            if (window) break;
+        }
+
+        if (!window) {
+            for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
+                if (candidate.isKeyWindow) {
+                    window = candidate;
+                    break;
+                }
+            }
+        }
         if (!window) return;
         HexiumShadeOverlay *overlay = [HexiumShadeOverlay new];
         objc_setAssociatedObject(window, "HexiumShadeOverlay", overlay, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
