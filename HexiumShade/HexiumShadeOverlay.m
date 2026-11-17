@@ -182,7 +182,7 @@
     CGPointMake(self.panel.center.x + translation.x,
                 self.panel.center.y + translation.y);
 
-    [gesture setTranslation:CGPointZero
+    [gesture setTranslation:CGPointMake(0, 0)
                      inView:self.panel.superview];
 }
 
