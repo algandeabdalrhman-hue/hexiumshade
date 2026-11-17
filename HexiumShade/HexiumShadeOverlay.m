@@ -298,7 +298,7 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
         return;
     }
     NSMutableDictionary *options = [[self rendererOptionsFromINI:[self updatedINI]] mutableCopy];
-    options[@"Quality"] = @2;
+    options[@"Quality"] = @([@[@"Low", @"Medium", @"High", @"Ultra"] indexOfObject:self.selectedQuality] == NSNotFound ? 1 : [@[@"Low", @"Medium", @"High", @"Ultra"] indexOfObject:self.selectedQuality]);
     HexiumShadeOverlay *overlay = self;
     handler(options, ^(BOOL success, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
