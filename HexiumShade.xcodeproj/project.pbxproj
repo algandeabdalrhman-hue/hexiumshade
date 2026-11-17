@@ -31,6 +31,11 @@
             fileRef = A20000000000000000000009;
         };
 
+        A10000000000000000000006 = {
+            isa = PBXBuildFile;
+            fileRef = A20000000000000000000010;
+        };
+
         A20000000000000000000001 = {
             isa = PBXFileReference;
             lastKnownFileType = sourcecode.c.h;
@@ -96,6 +101,14 @@
             sourceTree = SDKROOT;
         };
 
+        A20000000000000000000010 = {
+            isa = PBXFileReference;
+            lastKnownFileType = wrapper.framework;
+            name = Metal.framework;
+            path = System/Library/Frameworks/Metal.framework;
+            sourceTree = SDKROOT;
+        };
+
         A30000000000000000000001 = {
             isa = PBXGroup;
             children = (
@@ -126,6 +139,7 @@
             children = (
                 A20000000000000000000008,
                 A20000000000000000000009,
+                A20000000000000000000010,
             );
             sourceTree = "<group>";
         };
@@ -147,6 +161,7 @@
             files = (
                 A10000000000000000000004,
                 A10000000000000000000005,
+                A10000000000000000000006,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };
