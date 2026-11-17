@@ -62,9 +62,9 @@ enum { HSBloom=1u<<0, HSSharpen=1u<<1, HSColor=1u<<2, HSAmbient=1u<<3 };
         MTLSamplerDescriptor *sd=[MTLSamplerDescriptor new];
         sd.minFilter=MTLSamplerMinMagFilterLinear; sd.magFilter=MTLSamplerMinMagFilterLinear;
         _sampler=[_device newSamplerStateWithDescriptor:sd];
-        _options=@{@"Quality":@2,@"Bloom":@1,@"Sharpen":@1,@"ColorCorrection":@1,@"AmbientLight":@1,
-                   @"Exposure":@0.08,@"Contrast":@1.08,@"Saturation":@1.08,
-                   @"BloomIntensity":@0.32,@"SharpenAmount":@0.28,@"AmbientIntensity":@0.10};
+        _options=@{@"Quality":@1,@"Bloom":@0,@"Sharpen":@0,@"ColorCorrection":@1,@"AmbientLight":@0,
+                   @"Exposure":@0.02,@"Contrast":@1.02,@"Saturation":@1.0,
+                   @"BloomIntensity":@0.0,@"SharpenAmount":@0.0,@"AmbientIntensity":@0.0};
         _startTime=CACurrentMediaTime();
     }
     return self;
