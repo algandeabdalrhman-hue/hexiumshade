@@ -2,14 +2,14 @@ name: HexiumShade iOS Build
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
-    branches:
-      - main
+    branches: ["**"]
 
 jobs:
   build:
     runs-on: macos-15
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,9 +17,8 @@ jobs:
       - name: Check Xcode
         run: xcodebuild -version
 
-      - name: List project schemes
-        run: |
-          xcodebuild -list -project HexiumShade.xcodeproj
+      - name: List project targets
+        run: xcodebuild -list -project HexiumShade.xcodeproj
 
       - name: Build iOS arm64
         run: |
@@ -28,6 +27,7 @@ jobs:
             -target HexiumShade \
             -configuration Release \
             -sdk iphoneos \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             ARCHS=arm64 \
             build
@@ -35,11 +35,8 @@ jobs:
       - name: Find compiled library
         run: |
           mkdir -p output
-          find ~/Library/Developer/Xcode/DerivedData build \
-            -name "libHexiumShade.dylib" \
-            -type f \
-            -exec cp {} output/ \; 2>/dev/null || true
-          test -f output/libHexiumShade.dylib
+          find build/DerivedData -name "libHexiumShade.dylib" -type f -exec cp {} output/ \;
+          test -s output/libHexiumShade.dylib
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
