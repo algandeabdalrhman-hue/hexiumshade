@@ -29,7 +29,7 @@
     self.iniLines = [NSMutableArray array];
     self.effects = [NSMutableDictionary dictionary];
     self.selectedQuality = HexiumShade.qualityPreset;
-    self.panel = [[UIView alloc] initWithFrame:CGRectMake(20, 80, 340, 520)];
+    self.panel = [[UIView alloc] initWithFrame:CGRectMake(20, 80, 300, 430)];
     self.panel.backgroundColor = [UIColor colorWithRed:0.035 green:0.075 blue:0.15 alpha:0.97];
     self.panel.layer.cornerRadius = 15;
     self.panel.layer.borderWidth = 1;
@@ -62,33 +62,33 @@
 }
 
 - (void)buildHeader {
-    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 340, 45)];
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 42)];
     header.backgroundColor = [UIColor colorWithRed:0.06 green:0.16 blue:0.32 alpha:1];
     [self.panel addSubview:header];
-    UILabel *title = [self label:@"HEXIUM GRAPHICS" frame:CGRectMake(13, 0, 190, 45)];
+    UILabel *title = [self label:@"HEXIUM GRAPHICS" frame:CGRectMake(12, 0, 185, 42)];
     title.textColor = [UIColor colorWithRed:0.62 green:0.79 blue:1 alpha:1];
     title.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBlack];
     [header addSubview:title];
-    [header addSubview:[self button:@"−" frame:CGRectMake(298, 7, 32, 30) action:@selector(minimizePanel)]];
+    [header addSubview:[self button:@"−" frame:CGRectMake(262, 6, 30, 29) action:@selector(minimizePanel)]];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)];
     [header addGestureRecognizer:pan];
 }
 
 - (void)buildButtons {
-    [self.panel addSubview:[self button:@"＋ Import INI" frame:CGRectMake(10, 55, 100, 35) action:@selector(importPreset)]];
-    [self.panel addSubview:[self button:@"Export" frame:CGRectMake(118, 55, 85, 35) action:@selector(exportPreset)]];
-    [self.panel addSubview:[self button:@"Apply" frame:CGRectMake(211, 55, 119, 35) action:@selector(applyPreset)]];
+    [self.panel addSubview:[self button:@"＋ Import INI" frame:CGRectMake(9, 51, 92, 32) action:@selector(importPreset)]];
+    [self.panel addSubview:[self button:@"Export" frame:CGRectMake(108, 51, 76, 32) action:@selector(exportPreset)]];
+    [self.panel addSubview:[self button:@"Apply" frame:CGRectMake(191, 51, 100, 32) action:@selector(applyPreset)]];
     self.qualityLabel = [self label:[NSString stringWithFormat:@"QUALITY: %@", self.selectedQuality.uppercaseString]
-                              frame:CGRectMake(12, 96, 310, 22)];
+                              frame:CGRectMake(10, 87, 280, 20)];
     self.qualityLabel.textColor = [UIColor colorWithRed:0.65 green:0.79 blue:1 alpha:1];
     [self.panel addSubview:self.qualityLabel];
 
     NSArray *titles = @[@"Ultra", @"High", @"Medium", @"Low"];
     NSArray *actions = @[@"selectUltra", @"selectHigh", @"selectMedium", @"selectLow"];
-    CGFloat width = 77;
+    CGFloat width = 65;
     for (NSUInteger i = 0; i < titles.count; i++) {
         UIButton *preset = [self button:titles[i]
-                                   frame:CGRectMake(10 + i * 82, 120, width, 30)
+                                   frame:CGRectMake(9 + i * 72, 111, width, 28)
                                   action:NSSelectorFromString(actions[i])];
         if ([titles[i] isEqualToString:self.selectedQuality]) preset.backgroundColor = [UIColor colorWithRed:0.10 green:0.52 blue:0.34 alpha:1];
         [self.panel addSubview:preset];
@@ -115,10 +115,10 @@
 - (void)selectLow { [self selectQuality:@"Low"]; }
 
 - (void)buildScrollView {
-    self.scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(8, 158, 324, 352)];
+    self.scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(7, 146, 286, 276)];
     self.scroll.backgroundColor = UIColor.clearColor;
     [self.panel addSubview:self.scroll];
-    [self addLabel:@"Import an INI preset to inspect and edit its values." frame:CGRectMake(10, 10, 300, 38)];
+    [self addLabel:@"Import an INI preset to inspect and edit its values." frame:CGRectMake(8, 8, 270, 34)];
 }
 
 - (void)addLabel:(NSString *)text frame:(CGRect)frame {
@@ -127,12 +127,35 @@
 
 - (void)minimizePanel {
     self.panel.hidden = YES;
-    self.cube = [self button:@"H" frame:CGRectMake(20, 80, 45, 45) action:@selector(restorePanel)];
+    self.cube = [self button:@"H" frame:CGRectMake(self.panel.frame.origin.x, self.panel.frame.origin.y, 42, 42) action:@selector(restorePanel)];
     self.cube.layer.cornerRadius = 12;
-    self.cube.titleLabel.font = [UIFont boldSystemFontOfSize:18];
+    self.cube.titleLabel.font = [UIFont boldSystemFontOfSize:17];
+    self.cube.layer.borderWidth = 1;
+    self.cube.layer.borderColor = [UIColor colorWithRed:0.55 green:0.72 blue:1 alpha:1].CGColor;
+    UIPanGestureRecognizer *cubePan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragCube:)];
+    cubePan.cancelsTouchesInView = YES;
+    [self.cube addGestureRecognizer:cubePan];
     [self.panel.superview addSubview:self.cube];
 }
-- (void)restorePanel { self.panel.hidden = NO; [self.cube removeFromSuperview]; self.cube = nil; }
+- (void)restorePanel {
+    if (self.cube) self.panel.frame = CGRectMake(self.cube.frame.origin.x, self.cube.frame.origin.y, 300, 430);
+    self.panel.hidden = NO;
+    [self.cube removeFromSuperview];
+    self.cube = nil;
+}
+
+- (void)dragCube:(UIPanGestureRecognizer *)gesture {
+    UIView *host = self.cube.superview;
+    CGPoint delta = [gesture translationInView:host];
+    CGPoint center = self.cube.center;
+    center.x += delta.x;
+    center.y += delta.y;
+    CGFloat half = 21;
+    center.x = MIN(MAX(half, center.x), host.bounds.size.width - half);
+    center.y = MIN(MAX(half, center.y), host.bounds.size.height - half);
+    self.cube.center = center;
+    [gesture setTranslation:CGPointZero inView:host];
+}
 
 - (void)dragPanel:(UIPanGestureRecognizer *)gesture {
     CGPoint translation = [gesture translationInView:self.panel.superview];
@@ -228,8 +251,12 @@
 
 - (void)applyPreset {
     if (![HexiumShade setQualityPreset:self.selectedQuality]) return;
+    if (self.iniLines.count > 0) {
+        // Keep the imported/editable preset available to the host for its next supported render pass.
+        [NSUserDefaults.standardUserDefaults setObject:[self updatedINI] forKey:@"HexiumShade.importedPresetINI"];
+    }
     self.qualityLabel.text = [NSString stringWithFormat:@"QUALITY: %@ (SAVED)", self.selectedQuality.uppercaseString];
-    NSLog(@"HexiumShade: %@ quality profile saved.", self.selectedQuality);
+    NSLog(@"HexiumShade: %@ quality profile saved; imported INI stored when present.", self.selectedQuality);
 }
 
 @end
