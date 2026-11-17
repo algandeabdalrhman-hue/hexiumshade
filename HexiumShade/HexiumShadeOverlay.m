@@ -137,7 +137,7 @@
 - (void)dragPanel:(UIPanGestureRecognizer *)gesture {
     CGPoint translation = [gesture translationInView:self.panel.superview];
     self.panel.center = CGPointMake(self.panel.center.x + translation.x, self.panel.center.y + translation.y);
-    [gesture setTranslation:CGPointZero inView:self.panel.superview];
+    [gesture setTranslation:CGPointMake(0, 0) inView:self.panel.superview];
 }
 
 - (void)importPreset {
