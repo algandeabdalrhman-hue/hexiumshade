@@ -17,14 +17,14 @@ jobs:
       - name: Check Xcode
         run: xcodebuild -version
 
-      - name: List project targets
+      - name: List project schemes
         run: xcodebuild -list -project HexiumShade.xcodeproj
 
       - name: Build iOS arm64
         run: |
           xcodebuild \
             -project HexiumShade.xcodeproj \
-            -target HexiumShade \
+            -scheme HexiumShade \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build/DerivedData \
