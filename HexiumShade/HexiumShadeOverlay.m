@@ -10,7 +10,7 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
 @property (nonatomic, strong) UIView *panel;
 @property (nonatomic, strong) UIButton *cube;
 @property (nonatomic, strong) UIScrollView *scroll;
-@property (nonatomic, strong) NSMutableArray<NSString *> *iniLines;
+@property (nonatomic, strong) NSMutableArray<NSString *> *iniLines;\n@property (nonatomic, strong) UILabel *qualityLabel;\n@property (nonatomic, copy) NSString *selectedQuality;
 @end
 
 @implementation HexiumShadeOverlay
@@ -108,8 +108,43 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
     [self.panel addSubview:quality];
 }
 
+- (void)selectQuality:(UIButton *)sender {
+    NSArray *names = @[@"Low", @"Medium", @"High", @"Ultra"];
+    NSArray *presets = @[
+        @{@"Quality":@0, @"Bloom":@0, @"Sharpen":@0, @"ColorCorrection":@1, @"AmbientLight":@0,
+          @"Exposure":@0.0, @"Contrast":@1.0, @"Saturation":@1.0, @"BloomIntensity":@0.0,
+          @"SharpenAmount":@0.0, @"AmbientIntensity":@0.0},
+        @{@"Quality":@1, @"Bloom":@1, @"Sharpen":@0, @"ColorCorrection":@1, @"AmbientLight":@0,
+          @"Exposure":@0.04, @"Contrast":@1.04, @"Saturation":@1.04, @"BloomIntensity":@0.18,
+          @"SharpenAmount":@0.12, @"AmbientIntensity":@0.04},
+        @{@"Quality":@2, @"Bloom":@1, @"Sharpen":@1, @"ColorCorrection":@1, @"AmbientLight":@1,
+          @"Exposure":@0.08, @"Contrast":@1.08, @"Saturation":@1.08, @"BloomIntensity":@0.32,
+          @"SharpenAmount":@0.28, @"AmbientIntensity":@0.10},
+        @{@"Quality":@3, @"Bloom":@1, @"Sharpen":@1, @"ColorCorrection":@1, @"AmbientLight":@1,
+          @"Exposure":@0.12, @"Contrast":@1.12, @"Saturation":@1.14, @"BloomIntensity":@0.48,
+          @"SharpenAmount":@0.42, @"AmbientIntensity":@0.14}
+    ];
+    self.selectedQuality = names[sender.tag];
+    self.qualityLabel.text = [NSString stringWithFormat:@"QUALITY: %@", self.selectedQuality];
+    for (UIView *view in self.panel.subviews) {
+        if (![view isKindOfClass:UIButton.class]) continue;
+        UIButton *button=(UIButton *)view;
+        if (button.tag>=0 && button.tag<4 && [names containsObject:button.currentTitle]) {
+            button.backgroundColor = (button.tag==sender.tag)
+                ? [UIColor colorWithRed:0.12 green:0.48 blue:0.82 alpha:1]
+                : [UIColor colorWithRed:0.07 green:0.30 blue:0.59 alpha:1];
+        }
+    }
+    HexiumShadeApplyHandler handler=HexiumCurrentApplyHandler;
+    if (handler) handler(presets[sender.tag], ^(BOOL success, NSError *error) {
+        if (!success) dispatch_async(dispatch_get_main_queue(), ^{
+            [self showMessage:@"Quality change failed" message:error.localizedDescription ?: @"Renderer rejected this preset."];
+        });
+    });
+}
+
 - (void)buildScrollView {
-    self.scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(8, 130, 324, 380)];
+    self.scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(8, 164, 324, 346)];
     self.scroll.backgroundColor = UIColor.clearColor;
     [self.panel addSubview:self.scroll];
     [self addLabel:@"Import an INI preset to begin." frame:CGRectMake(10, 10, 300, 30)];
@@ -262,7 +297,8 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
         [self showMessage:@"Renderer not connected" message:@"The host app must register its own Metal renderer callback before Apply can process a frame."];
         return;
     }
-    NSDictionary *options = [self rendererOptionsFromINI:[self updatedINI]];
+    NSMutableDictionary *options = [[self rendererOptionsFromINI:[self updatedINI]] mutableCopy];
+    options[@"Quality"] = @2;
     HexiumShadeOverlay *overlay = self;
     handler(options, ^(BOOL success, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
