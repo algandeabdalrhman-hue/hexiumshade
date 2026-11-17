@@ -3,86 +3,32 @@
     archiveVersion = 1;
     classes = {};
     objectVersion = 56;
-
     objects = {
-        A10000000000000000000001 = { isa = PBXBuildFile; fileRef = A20000000000000000000002; };
-        A10000000000000000000002 = { isa = PBXBuildFile; fileRef = A20000000000000000000003; };
-        A10000000000000000000003 = { isa = PBXBuildFile; fileRef = A20000000000000000000006; };
-        A10000000000000000000004 = { isa = PBXBuildFile; fileRef = A20000000000000000000008; };
-        A10000000000000000000005 = { isa = PBXBuildFile; fileRef = A20000000000000000000009; };
-        A10000000000000000000006 = { isa = PBXBuildFile; fileRef = A20000000000000000000010; };
+        A10000000000000000000001 = { isa = PBXBuildFile; fileRef = A20000000000000000000001; };
+        A10000000000000000000002 = { isa = PBXBuildFile; fileRef = A20000000000000000000002; };
+        A10000000000000000000003 = { isa = PBXBuildFile; fileRef = A20000000000000000000003; };
+        A10000000000000000000004 = { isa = PBXBuildFile; fileRef = A20000000000000000000004; };
+        A10000000000000000000005 = { isa = PBXBuildFile; fileRef = A20000000000000000000005; };
+        A10000000000000000000006 = { isa = PBXBuildFile; fileRef = A20000000000000000000006; };
+        A10000000000000000000007 = { isa = PBXBuildFile; fileRef = A20000000000000000000007; };
 
-        A20000000000000000000001 = {
-            isa = PBXFileReference;
-            lastKnownFileType = sourcecode.c.h;
-            path = HexiumShade.h;
-            sourceTree = "<group>";
-        };
-        A20000000000000000000002 = {
-            isa = PBXFileReference;
-            lastKnownFileType = sourcecode.c.objc;
-            path = HexiumShade.m;
-            sourceTree = "<group>";
-        };
-        A20000000000000000000003 = {
-            isa = PBXFileReference;
-            lastKnownFileType = sourcecode.metal;
-            path = HexiumShade.metal;
-            sourceTree = "<group>";
-        };
-        A20000000000000000000004 = {
-            isa = PBXFileReference;
-            lastKnownFileType = text.plist.xml;
-            path = Info.plist;
-            sourceTree = "<group>";
-        };
-        A20000000000000000000005 = {
-            isa = PBXFileReference;
-            explicitFileType = "compiled.mach-o.dylib";
-            path = libHexiumShade.dylib;
-            sourceTree = BUILT_PRODUCTS_DIR;
-        };
-        A20000000000000000000006 = {
-            isa = PBXFileReference;
-            lastKnownFileType = sourcecode.c.objc;
-            path = HexiumShadeOverlay.m;
-            sourceTree = "<group>";
-        };
-        A20000000000000000000007 = {
-            isa = PBXFileReference;
-            lastKnownFileType = sourcecode.c.h;
-            path = HexiumShadeOverlay.h;
-            sourceTree = "<group>";
-        };
-        A20000000000000000000008 = {
-            isa = PBXFileReference;
-            lastKnownFileType = wrapper.framework;
-            name = UIKit.framework;
-            path = System/Library/Frameworks/UIKit.framework;
-            sourceTree = SDKROOT;
-        };
-        A20000000000000000000009 = {
-            isa = PBXFileReference;
-            lastKnownFileType = wrapper.framework;
-            name = UniformTypeIdentifiers.framework;
-            path = System/Library/Frameworks/UniformTypeIdentifiers.framework;
-            sourceTree = SDKROOT;
-        };
-        A20000000000000000000010 = {
-            isa = PBXFileReference;
-            lastKnownFileType = wrapper.framework;
-            name = Metal.framework;
-            path = System/Library/Frameworks/Metal.framework;
-            sourceTree = SDKROOT;
-        };
+        A20000000000000000000001 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+        A20000000000000000000002 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+        A20000000000000000000003 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+        A20000000000000000000004 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HexiumShade.h; sourceTree = "<group>"; };
+        A20000000000000000000005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HexiumShade.m; sourceTree = "<group>"; };
+        A20000000000000000000006 = { isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = HexiumShade.metal; sourceTree = "<group>"; };
+        A20000000000000000000007 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HexiumShadeOverlay.m; sourceTree = "<group>"; };
+        A20000000000000000000008 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HexiumShadeOverlay.h; sourceTree = "<group>"; };
+        A20000000000000000000009 = { isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+        A20000000000000000000010 = { isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+        A20000000000000000000011 = { isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
+        A20000000000000000000012 = { isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+        A20000000000000000000013 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HexiumShade.app; sourceTree = BUILT_PRODUCTS_DIR; };
 
         A30000000000000000000001 = {
             isa = PBXGroup;
-            children = (
-                A30000000000000000000002,
-                A20000000000000000000005,
-                A30000000000000000000003,
-            );
+            children = ( A30000000000000000000002, A30000000000000000000003, );
             sourceTree = "<group>";
         };
         A30000000000000000000002 = {
@@ -94,39 +40,30 @@
                 A20000000000000000000002,
                 A20000000000000000000003,
                 A20000000000000000000004,
+                A20000000000000000000005,
                 A20000000000000000000006,
                 A20000000000000000000007,
+                A20000000000000000000008,
+                A20000000000000000000009,
             );
         };
         A30000000000000000000003 = {
             isa = PBXGroup;
             name = Frameworks;
-            children = (
-                A20000000000000000000008,
-                A20000000000000000000009,
-                A20000000000000000000010,
-            );
+            children = ( A20000000000000000000010, A20000000000000000000011, A20000000000000000000012, );
             sourceTree = "<group>";
         };
 
         A40000000000000000000001 = {
             isa = PBXSourcesBuildPhase;
             buildActionMask = 2147483647;
-            files = (
-                A10000000000000000000001,
-                A10000000000000000000002,
-                A10000000000000000000003,
-            );
+            files = ( A10000000000000000000001, A10000000000000000000002, A10000000000000000000005, A10000000000000000000007, );
             runOnlyForDeploymentPostprocessing = 0;
         };
         A40000000000000000000002 = {
             isa = PBXFrameworksBuildPhase;
             buildActionMask = 2147483647;
-            files = (
-                A10000000000000000000004,
-                A10000000000000000000005,
-                A10000000000000000000006,
-            );
+            files = ( A10000000000000000000003, A10000000000000000000004, A10000000000000000000006, );
             runOnlyForDeploymentPostprocessing = 0;
         };
         A40000000000000000000003 = {
@@ -139,25 +76,19 @@
         A50000000000000000000001 = {
             isa = PBXNativeTarget;
             buildConfigurationList = A60000000000000000000002;
-            buildPhases = (
-                A40000000000000000000001,
-                A40000000000000000000002,
-                A40000000000000000000003,
-            );
+            buildPhases = ( A40000000000000000000001, A40000000000000000000002, A40000000000000000000003, );
             buildRules = ();
             dependencies = ();
             name = HexiumShade;
             productName = HexiumShade;
-            productReference = A20000000000000000000005;
-            productType = "com.apple.product-type.library.dynamic";
+            productReference = A20000000000000000000013;
+            productType = "com.apple.product-type.application";
         };
         A50000000000000000000002 = {
             isa = PBXProject;
             attributes = {
                 LastUpgradeCheck = 1600;
-                TargetAttributes = {
-                    A50000000000000000000001 = { CreatedOnToolsVersion = 16.0; };
-                };
+                TargetAttributes = { A50000000000000000000001 = { CreatedOnToolsVersion = 16.0; }; };
             };
             buildConfigurationList = A60000000000000000000001;
             compatibilityVersion = "Xcode 14.0";
@@ -175,17 +106,15 @@
                 ARCHS = arm64;
                 CODE_SIGNING_ALLOWED = NO;
                 CURRENT_PROJECT_VERSION = 1;
-                DYLIB_COMPATIBILITY_VERSION = 1;
-                DYLIB_CURRENT_VERSION = 1;
-                EXECUTABLE_PREFIX = lib;
-                GENERATE_INFOPLIST_FILE = YES;
-                MACH_O_TYPE = mh_dylib;
+                GENERATE_INFOPLIST_FILE = NO;
+                INFOPLIST_FILE = HexiumShade/Info.plist;
+                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
                 PRODUCT_BUNDLE_IDENTIFIER = com.hexiumshade.renderer;
                 PRODUCT_NAME = HexiumShade;
                 SDKROOT = iphoneos;
-                SKIP_INSTALL = YES;
                 SUPPORTED_PLATFORMS = iphoneos;
-                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+                SWIFT_VERSION = 5.0;
             };
             name = Release;
         };
@@ -194,32 +123,27 @@
             buildSettings = {
                 ARCHS = arm64;
                 CODE_SIGNING_ALLOWED = NO;
-                GENERATE_INFOPLIST_FILE = YES;
-                MACH_O_TYPE = mh_dylib;
+                CURRENT_PROJECT_VERSION = 1;
+                GENERATE_INFOPLIST_FILE = NO;
+                INFOPLIST_FILE = HexiumShade/Info.plist;
+                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
                 PRODUCT_BUNDLE_IDENTIFIER = com.hexiumshade.renderer;
                 PRODUCT_NAME = HexiumShade;
                 SDKROOT = iphoneos;
-                SKIP_INSTALL = YES;
                 SUPPORTED_PLATFORMS = iphoneos;
-                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
             };
             name = Debug;
         };
         A60000000000000000000001 = {
             isa = XCConfigurationList;
-            buildConfigurations = (
-                A70000000000000000000001,
-                A70000000000000000000002,
-            );
+            buildConfigurations = ( A70000000000000000000001, A70000000000000000000002, );
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Release;
         };
         A60000000000000000000002 = {
             isa = XCConfigurationList;
-            buildConfigurations = (
-                A70000000000000000000001,
-                A70000000000000000000002,
-            );
+            buildConfigurations = ( A70000000000000000000000001, A70000000000000000000002, );
             defaultConfigurationIsVisible = 0;
             defaultConfigurationName = Release;
         };
