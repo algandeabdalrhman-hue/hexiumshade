@@ -1,4 +1,4 @@
-name: HexiumShade iOS Build
+name: HexiumShade iOS App Build
 
 on:
   workflow_dispatch:
@@ -10,7 +10,6 @@ on:
 jobs:
   build:
     runs-on: macos-15
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,31 +18,30 @@ jobs:
         run: xcodebuild -version
 
       - name: List project schemes
-        run: |
-          xcodebuild -list -project HexiumShade.xcodeproj
+        run: xcodebuild -list -project HexiumShade.xcodeproj
 
-      - name: Build iOS arm64
+      - name: Build unsigned iOS app
         run: |
           xcodebuild \
             -project HexiumShade.xcodeproj \
             -target HexiumShade \
             -configuration Release \
             -sdk iphoneos \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             ARCHS=arm64 \
             build
 
-      - name: Find compiled library
+      - name: Package app
         run: |
+          APP_PATH="build/Build/Products/Release-iphoneos/HexiumShade.app"
+          test -d "$APP_PATH"
           mkdir -p output
-          find ~/Library/Developer/Xcode/DerivedData build \
-            -name "libHexiumShade.dylib" \
-            -type f \
-            -exec cp {} output/ \; 2>/dev/null || true
-          test -f output/libHexiumShade.dylib
+          cd build/Build/Products/Release-iphoneos
+          /usr/bin/zip -r "$GITHUB_WORKSPACE/output/HexiumShade-unsigned.zip" HexiumShade.app
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HexiumShade-iOS-arm64
-          path: output/libHexiumShade.dylib
+          name: HexiumShade-iOS-app-unsigned
+          path: output/HexiumShade-unsigned.zip
