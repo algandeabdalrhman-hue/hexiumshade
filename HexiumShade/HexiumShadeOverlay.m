@@ -240,13 +240,13 @@ static HexiumShadeApplyHandler HexiumCurrentApplyHandler = nil;
         return;
     }
     NSDictionary *options = [self rendererOptionsFromINI:[self updatedINI]];
-    __weak typeof(self) weakSelf = self;
+    HexiumShadeOverlay *overlay = self;
     handler(options, ^(BOOL success, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (success) {
-                [weakSelf showMessage:@"Settings submitted" message:@"The host renderer reported that the frame was processed."];
+                [overlay showMessage:@"Settings submitted" message:@"The host renderer reported that the frame was processed."];
             } else {
-                [weakSelf showMessage:@"Apply failed" message:error.localizedDescription ?: @"The host renderer could not process the frame."];
+                [overlay showMessage:@"Apply failed" message:error.localizedDescription ?: @"The host renderer could not process the frame."];
             }
         });
     });
