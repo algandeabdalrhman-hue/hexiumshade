@@ -80,7 +80,7 @@ static NSString * const HexiumShadeErrorDomain = @"com.hexiumshade.renderer";
     }
 
     NSDictionary *settings = self.qualitySettings;
-    vector_float4 controls = {settings[@"brightness"].floatValue, settings[@"contrast"].floatValue, settings[@"saturation"].floatValue, 0.0f};
+    vector_float4 controls = {[(NSNumber *)(settings[@"brightness"] ?: @0.0) floatValue], [(NSNumber *)(settings[@"contrast"] ?: @1.0) floatValue], [(NSNumber *)(settings[@"saturation"] ?: @1.0) floatValue], 0.0f};
     id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
     id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
     [encoder setComputePipelineState:pipeline];
