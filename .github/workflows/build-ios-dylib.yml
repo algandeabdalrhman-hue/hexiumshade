@@ -24,7 +24,7 @@ jobs:
         run: |
           xcodebuild \
             -project HexiumShade.xcodeproj \
-            -target HexiumShade \
+            -scheme HexiumShade \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
