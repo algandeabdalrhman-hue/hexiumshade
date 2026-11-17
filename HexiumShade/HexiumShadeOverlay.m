@@ -69,7 +69,17 @@
     title.textColor = [UIColor colorWithRed:0.62 green:0.79 blue:1 alpha:1];
     title.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBlack];
     [header addSubview:title];
-    [header addSubview:[self button:@"−" frame:CGRectMake(262, 6, 30, 29) action:@selector(minimizePanel)]];
+    UIButton *minimize = [self button:@"−" frame:CGRectMake(262, 5, 30, 30) action:@selector(minimizePanel)];
+    minimize.backgroundColor = [UIColor colorWithRed:0.015 green:0.07 blue:0.20 alpha:0.98];
+    minimize.layer.cornerRadius = 9;
+    minimize.layer.borderWidth = 1.5;
+    minimize.layer.borderColor = [UIColor colorWithRed:0.04 green:0.48 blue:1 alpha:1].CGColor;
+    minimize.layer.shadowColor = [UIColor colorWithRed:0.02 green:0.38 blue:1 alpha:1].CGColor;
+    minimize.layer.shadowOpacity = 0.9;
+    minimize.layer.shadowRadius = 8;
+    minimize.layer.shadowOffset = CGSizeZero;
+    minimize.titleLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightBold];
+    [header addSubview:minimize];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)];
     [header addGestureRecognizer:pan];
 }
@@ -127,11 +137,19 @@
 
 - (void)minimizePanel {
     self.panel.hidden = YES;
-    self.cube = [self button:@"H" frame:CGRectMake(self.panel.frame.origin.x, self.panel.frame.origin.y, 42, 42) action:@selector(restorePanel)];
-    self.cube.layer.cornerRadius = 12;
-    self.cube.titleLabel.font = [UIFont boldSystemFontOfSize:17];
-    self.cube.layer.borderWidth = 1;
-    self.cube.layer.borderColor = [UIColor colorWithRed:0.55 green:0.72 blue:1 alpha:1].CGColor;
+    UIView *host = self.panel.superview;
+    CGFloat cubeX = MAX(12, host.bounds.size.width - 68);
+    CGFloat cubeY = MAX(12, self.panel.frame.origin.y - 18);
+    self.cube = [self button:@"H" frame:CGRectMake(cubeX, cubeY, 54, 54) action:@selector(restorePanel)];
+    self.cube.backgroundColor = [UIColor colorWithRed:0.015 green:0.07 blue:0.22 alpha:0.98];
+    self.cube.layer.cornerRadius = 15;
+    self.cube.titleLabel.font = [UIFont systemFontOfSize:25 weight:UIFontWeightBlack];
+    self.cube.layer.borderWidth = 2;
+    self.cube.layer.borderColor = [UIColor colorWithRed:0.02 green:0.52 blue:1 alpha:1].CGColor;
+    self.cube.layer.shadowColor = [UIColor colorWithRed:0.02 green:0.40 blue:1 alpha:1].CGColor;
+    self.cube.layer.shadowOpacity = 1;
+    self.cube.layer.shadowRadius = 12;
+    self.cube.layer.shadowOffset = CGSizeZero;
     UIPanGestureRecognizer *cubePan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragCube:)];
     cubePan.cancelsTouchesInView = YES;
     [self.cube addGestureRecognizer:cubePan];
@@ -150,7 +168,7 @@
     CGPoint center = self.cube.center;
     center.x += delta.x;
     center.y += delta.y;
-    CGFloat half = 21;
+    CGFloat half = 27;
     center.x = MIN(MAX(half, center.x), host.bounds.size.width - half);
     center.y = MIN(MAX(half, center.y), host.bounds.size.height - half);
     self.cube.center = center;
