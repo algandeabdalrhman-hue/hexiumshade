@@ -85,7 +85,7 @@
 }
 
 - (void)buildButtons {
-    [self.panel addSubview:[self button:@"＋ Import INI" frame:CGRectMake(9, 51, 92, 32) action:@selector(importPreset)]];
+    [self.panel addSubview:[self button:@"Import Preset" frame:CGRectMake(9, 51, 92, 32) action:@selector(importPreset)]];
     [self.panel addSubview:[self button:@"Export" frame:CGRectMake(108, 51, 76, 32) action:@selector(exportPreset)]];
     [self.panel addSubview:[self button:@"Apply" frame:CGRectMake(191, 51, 100, 32) action:@selector(applyPreset)]];
     self.qualityLabel = [self label:[NSString stringWithFormat:@"QUALITY: %@", self.selectedQuality.uppercaseString]
