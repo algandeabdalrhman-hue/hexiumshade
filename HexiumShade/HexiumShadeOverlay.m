@@ -65,7 +65,7 @@
     UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 42)];
     header.backgroundColor = [UIColor colorWithRed:0.06 green:0.16 blue:0.32 alpha:1];
     [self.panel addSubview:header];
-    UILabel *title = [self label:@"HEXIUM GRAPHICS" frame:CGRectMake(12, 0, 185, 42)];
+    UILabel *title = [self label:@"SHADES" frame:CGRectMake(12, 0, 185, 42)];
     title.textColor = [UIColor colorWithRed:0.62 green:0.79 blue:1 alpha:1];
     title.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBlack];
     [header addSubview:title];
