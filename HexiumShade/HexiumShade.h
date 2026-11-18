@@ -81,6 +81,21 @@ typedef struct {
                                        commandQueue:(id<MTLCommandQueue>)commandQueue
                                               error:(NSError * _Nullable * _Nullable)error;
 
+
+/// Applies distance-based depth haze to a host-supplied color/depth frame.
+/// fogStart and fogFactor are normalized [0,1] distance controls; fogColor is linear RGB.
++ (nullable id<MTLTexture>)applyDepthHazeToColorTexture:(id<MTLTexture>)colorTexture
+                                          depthTexture:(id<MTLTexture>)depthTexture
+                                         depthEncoding:(HSDepthEncoding)depthEncoding
+                                             nearPlane:(float)nearPlane
+                                              farPlane:(float)farPlane
+                                              fogStart:(float)fogStart
+                                             fogFactor:(float)fogFactor
+                                              fogColor:(vector_float3)fogColor
+                                                device:(id<MTLDevice>)device
+                                          commandQueue:(id<MTLCommandQueue>)commandQueue
+                                                 error:(NSError * _Nullable * _Nullable)error;
+
 /// Runs HexiumShade's standalone Metal color pass on a caller-owned texture.
 + (nullable id<MTLTexture>)processTexture:(id<MTLTexture>)input
                                    device:(id<MTLDevice>)device
