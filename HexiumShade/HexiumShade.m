@@ -1,6 +1,7 @@
 #import "HexiumShade.h"
 #import <Foundation/Foundation.h>
 #import <simd/simd.h>
+#include <math.h>
 
 static NSString * const HexiumShadeErrorDomain = @"com.hexiumshade.renderer";
 
