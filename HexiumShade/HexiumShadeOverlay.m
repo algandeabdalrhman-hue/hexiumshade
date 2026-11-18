@@ -300,7 +300,6 @@
 }
 
 - (void)syncEffectStatesFromINI {
-    NSString *allText = [[self.iniLines componentsJoinedByString:@"\n"] lowercaseString];
     NSDictionary *tokens = @{@"MXAO": @[@"mxao"], @"DepthHaze": @[@"depthhaze", @"depth_haze"], @"ADOF": @[@"adof", @"dof"], @"SSR": @[@"ssr"]};
     for (NSString *effect in tokens) {
         BOOL found = NO;
@@ -322,7 +321,6 @@
             self.effectSwitches[effect].on = enabled;
         }
     }
-    (void)allText;
 }
 
 - (void)renderPreset {
@@ -366,6 +364,17 @@
 
 - (NSString *)updatedINI {
     NSMutableArray *output = [self.iniLines mutableCopy] ?: [NSMutableArray array];
+    for (UIView *view in self.scroll.subviews) {
+        if (![view isKindOfClass:UITextField.class]) continue;
+        UITextField *field = (UITextField *)view;
+        NSInteger index = field.tag;
+        if (index < 0 || index >= (NSInteger)output.count) continue;
+        NSString *original = output[index];
+        NSRange separator = [original rangeOfString:@"="];
+        if (separator.location == NSNotFound) continue;
+        NSString *key = [original substringToIndex:separator.location];
+        output[index] = [NSString stringWithFormat:@"%@=%@", key, field.text ?: @""];
+    }
     NSInteger shadesStart = NSNotFound;
     for (NSInteger i = 0; i < (NSInteger)output.count; i++) {
         NSString *trimmed = [output[i] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
@@ -379,17 +388,6 @@
             end++;
         }
         [output removeObjectsInRange:NSMakeRange((NSUInteger)shadesStart, (NSUInteger)(end - shadesStart))];
-    }
-    for (UIView *view in self.scroll.subviews) {
-        if (![view isKindOfClass:UITextField.class]) continue;
-        UITextField *field = (UITextField *)view;
-        NSInteger index = field.tag;
-        if (index < 0 || index >= (NSInteger)output.count) continue;
-        NSString *original = output[index];
-        NSRange separator = [original rangeOfString:@"="];
-        if (separator.location == NSNotFound) continue;
-        NSString *key = [original substringToIndex:separator.location];
-        output[index] = [NSString stringWithFormat:@"%@=%@", key, field.text ?: @""];
     }
     if (output.count && [output.lastObject length] > 0) [output addObject:@""];
     [output addObject:@"[SHADES]"];
@@ -421,7 +419,7 @@
 
 - (void)applyPreset {
     if (![HexiumShade setQualityPreset:self.selectedQuality]) return;
-    if (self.iniLines.count > 0 || self.importedFileName.length > 0) {
+    if (self.iniLines.count > 0) {
         [NSUserDefaults.standardUserDefaults setObject:[self updatedINI] forKey:@"HexiumShade.importedPresetINI"];
     }
     [NSUserDefaults.standardUserDefaults setObject:self.effects forKey:@"HexiumShade.effectStates"];
