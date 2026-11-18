@@ -77,7 +77,7 @@
     minimize.layer.shadowColor = [UIColor colorWithRed:0.02 green:0.38 blue:1 alpha:1].CGColor;
     minimize.layer.shadowOpacity = 0.9;
     minimize.layer.shadowRadius = 8;
-    minimize.layer.shadowOffset = CGSizeZero;
+    minimize.layer.shadowOffset = CGSizeMake(0.0, 0.0);
     minimize.titleLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightBold];
     [header addSubview:minimize];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)];
@@ -149,7 +149,7 @@
     self.cube.layer.shadowColor = [UIColor colorWithRed:0.02 green:0.40 blue:1 alpha:1].CGColor;
     self.cube.layer.shadowOpacity = 1;
     self.cube.layer.shadowRadius = 12;
-    self.cube.layer.shadowOffset = CGSizeZero;
+    self.cube.layer.shadowOffset = CGSizeMake(0.0, 0.0);
     UIPanGestureRecognizer *cubePan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragCube:)];
     cubePan.cancelsTouchesInView = YES;
     [self.cube addGestureRecognizer:cubePan];
@@ -172,7 +172,7 @@
     center.x = MIN(MAX(half, center.x), host.bounds.size.width - half);
     center.y = MIN(MAX(half, center.y), host.bounds.size.height - half);
     self.cube.center = center;
-    [gesture setTranslation:CGPointZero inView:host];
+    [gesture setTranslation:CGPointMake(0.0, 0.0) inView:host];
 }
 
 - (void)dragPanel:(UIPanGestureRecognizer *)gesture {
