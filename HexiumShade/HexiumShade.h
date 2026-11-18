@@ -96,6 +96,21 @@ typedef struct {
                                           commandQueue:(id<MTLCommandQueue>)commandQueue
                                                  error:(NSError * _Nullable * _Nullable)error;
 
+
+/// Applies depth-of-field blur using host-supplied color and depth textures.
+/// focusDistance is normalized [0,1] linear view distance; focusRange controls the in-focus band.
++ (nullable id<MTLTexture>)applyADOFToColorTexture:(id<MTLTexture>)colorTexture
+                                     depthTexture:(id<MTLTexture>)depthTexture
+                                    depthEncoding:(HSDepthEncoding)depthEncoding
+                                        nearPlane:(float)nearPlane
+                                         farPlane:(float)farPlane
+                                     focusDistance:(float)focusDistance
+                                         focusRange:(float)focusRange
+                                         blurRadius:(float)blurRadius
+                                             device:(id<MTLDevice>)device
+                                       commandQueue:(id<MTLCommandQueue>)commandQueue
+                                              error:(NSError * _Nullable * _Nullable)error;
+
 /// Runs HexiumShade's standalone Metal color pass on a caller-owned texture.
 + (nullable id<MTLTexture>)processTexture:(id<MTLTexture>)input
                                    device:(id<MTLDevice>)device
