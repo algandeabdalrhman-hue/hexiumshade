@@ -346,6 +346,9 @@
                 ARCHS = arm64;
                 CODE_SIGNING_ALLOWED = NO;
                 GENERATE_INFOPLIST_FILE = YES;
+                EXECUTABLE_PREFIX = "";
+                MACH_O_TYPE = mh_execute;
+                SKIP_INSTALL = NO;
                 INFOPLIST_KEY_CFBundleDisplayName = SHADES;
                 INFOPLIST_KEY_UILaunchScreen_Generation = YES;
                 INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
