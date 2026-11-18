@@ -6,6 +6,35 @@
     objectVersion = 56;
 
     objects = {
+
+        A10000000000000000000007 = { isa = PBXBuildFile; fileRef = A20000000000000000000011; };
+        A10000000000000000000008 = { isa = PBXBuildFile; fileRef = A20000000000000000000012; };
+        A10000000000000000000009 = { isa = PBXBuildFile; fileRef = A20000000000000000000013; };
+        A10000000000000000000010 = { isa = PBXBuildFile; fileRef = A20000000000000000000014; };
+        A10000000000000000000011 = { isa = PBXBuildFile; fileRef = A20000000000000000000015; };
+        A10000000000000000000012 = { isa = PBXBuildFile; fileRef = A20000000000000000000016; };
+
+        A20000000000000000000011 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SHKernelCache.h; sourceTree = "<group>"; };
+        A20000000000000000000012 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SHKernelCache.m; sourceTree = "<group>"; };
+        A20000000000000000000013 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SHBindingTable.h; sourceTree = "<group>"; };
+        A20000000000000000000014 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SHBindingTable.m; sourceTree = "<group>"; };
+        A20000000000000000000015 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SHComputeDispatcher.h; sourceTree = "<group>"; };
+        A20000000000000000000016 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SHComputeDispatcher.m; sourceTree = "<group>"; };
+
+        A30000000000000000000004 = {
+            isa = PBXGroup;
+            path = Compute;
+            sourceTree = "<group>";
+            children = (
+                A20000000000000000000011,
+                A20000000000000000000012,
+                A20000000000000000000013,
+                A20000000000000000000014,
+                A20000000000000000000015,
+                A20000000000000000000016,
+            );
+        };
+
         A10000000000000000000001 = {
             isa = PBXBuildFile;
             fileRef = A20000000000000000000002;
@@ -130,6 +159,7 @@
                 A20000000000000000000004,
                 A20000000000000000000006,
                 A20000000000000000000007,
+                A30000000000000000000004,
             );
         };
 
@@ -151,6 +181,9 @@
                 A10000000000000000000001,
                 A10000000000000000000002,
                 A10000000000000000000003,
+                A10000000000000000000008,
+                A10000000000000000000010,
+                A10000000000000000000012,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };
