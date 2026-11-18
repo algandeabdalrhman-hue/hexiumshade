@@ -65,6 +65,22 @@ typedef struct {
                                       commandQueue:(id<MTLCommandQueue>)commandQueue
                                              error:(NSError * _Nullable * _Nullable)error;
 
+/// Applies screen-space ambient occlusion using host-supplied linear/device depth and normals.
+/// Returns a new color texture; inputs remain owned by the caller.
++ (nullable id<MTLTexture>)applyMXAOToColorTexture:(id<MTLTexture>)colorTexture
+                                      depthTexture:(id<MTLTexture>)depthTexture
+                                     normalTexture:(id<MTLTexture>)normalTexture
+                                      depthEncoding:(HSDepthEncoding)depthEncoding
+                                     normalEncoding:(HSNormalEncoding)normalEncoding
+                                          nearPlane:(float)nearPlane
+                                           farPlane:(float)farPlane
+                                             radius:(float)radius
+                                           intensity:(float)intensity
+                                         normalBias:(float)normalBias
+                                             device:(id<MTLDevice>)device
+                                       commandQueue:(id<MTLCommandQueue>)commandQueue
+                                              error:(NSError * _Nullable * _Nullable)error;
+
 /// Runs HexiumShade's standalone Metal color pass on a caller-owned texture.
 + (nullable id<MTLTexture>)processTexture:(id<MTLTexture>)input
                                    device:(id<MTLDevice>)device
