@@ -162,9 +162,8 @@
         detail.font = [UIFont systemFontOfSize:9 weight:UIFontWeightRegular];
         detail.textColor = [UIColor colorWithWhite:0.62 alpha:1];
         [self.panel addSubview:detail];
-        UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectZero];
+        UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
         toggle.on = [self.effects[names[i]] boolValue];
-        toggle.transform = CGAffineTransformMakeScale(0.72, 0.72);
         toggle.onTintColor = [self blue:0.08 green:0.48 blue:0.92 alpha:1];
         toggle.accessibilityIdentifier = names[i];
         [toggle addTarget:self action:@selector(effectSwitchChanged:) forControlEvents:UIControlEventValueChanged];
@@ -181,6 +180,13 @@
     presetHeading.font = [UIFont systemFontOfSize:10 weight:UIFontWeightBlack];
     presetHeading.textColor = [self blue:0.55 green:0.75 blue:1 alpha:1];
     [self.panel addSubview:presetHeading];
+}
+
+- (void)addLabel:(NSString *)text frame:(CGRect)frame {
+    UILabel *label = [self label:text frame:frame];
+    label.font = [UIFont systemFontOfSize:10 weight:UIFontWeightRegular];
+    label.textColor = [UIColor colorWithWhite:0.72 alpha:1];
+    [self.scroll addSubview:label];
 }
 
 - (void)buildScrollViewWithWidth:(CGFloat)width height:(CGFloat)height {
@@ -257,7 +263,7 @@
     center.x = MIN(MAX(half, center.x), host.bounds.size.width - half);
     center.y = MIN(MAX(half, center.y), host.bounds.size.height - half);
     self.cube.center = center;
-    [gesture setTranslation:CGPointZero inView:host];
+    [gesture setTranslation:CGPointMake(0, 0) inView:host];
 }
 
 - (void)dragPanel:(UIPanGestureRecognizer *)gesture {
@@ -268,7 +274,7 @@
     center.x = MIN(MAX(halfW, center.x), self.panel.superview.bounds.size.width - halfW);
     center.y = MIN(MAX(halfH, center.y), self.panel.superview.bounds.size.height - halfH);
     self.panel.center = center;
-    [gesture setTranslation:CGPointZero inView:self.panel.superview];
+    [gesture setTranslation:CGPointMake(0, 0) inView:self.panel.superview];
 }
 
 - (void)importPreset {
