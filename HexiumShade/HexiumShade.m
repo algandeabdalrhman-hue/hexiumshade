@@ -80,6 +80,36 @@ typedef struct {
     vector_float4 camera;     // near plane, far plane, normal encoding, unused
 } HSMXAOControls;
 
+
+static id<MTLComputePipelineState> HexiumShadeDepthHazePipelineForDevice(id<MTLDevice> device, NSError **error) {
+    static NSMapTable<id<MTLDevice>, id<MTLComputePipelineState>> *cache;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{ cache = [NSMapTable weakToStrongObjectsMapTable]; });
+    @synchronized (cache) {
+        id<MTLComputePipelineState> cached = [cache objectForKey:device];
+        if (cached) return cached;
+        id<MTLLibrary> library = [device newDefaultLibrary];
+        id<MTLFunction> function = [library newFunctionWithName:@"hexiumshade_depth_haze"];
+        if (!function) {
+            HexiumShadeAssignError(error, 50, @"Metal function hexiumshade_depth_haze was not found in the default library.");
+            return nil;
+        }
+        NSError *pipelineError = nil;
+        id<MTLComputePipelineState> pipeline = [device newComputePipelineStateWithFunction:function error:&pipelineError];
+        if (!pipeline) {
+            if (error) *error = pipelineError ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:51 userInfo:@{NSLocalizedDescriptionKey: @"Could not create the depth haze compute pipeline."}];
+            return nil;
+        }
+        [cache setObject:pipeline forKey:device];
+        return pipeline;
+    }
+}
+
+typedef struct {
+    vector_float4 fogColorStart; // RGB fog color, normalized fog start
+    vector_float4 depthControls; // fog factor, near, far, depth encoding
+} HSDepthHazeControls;
+
 @implementation HexiumShade
 
 + (BOOL)validateFrameInfo:(HSFrameInfo)frameInfo error:(NSError **)error {
@@ -293,6 +323,81 @@ typedef struct {
     [commandBuffer waitUntilCompleted];
     if (commandBuffer.status == MTLCommandBufferStatusError) {
         if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:47 userInfo:@{NSLocalizedDescriptionKey: @"MXAO processing failed."}];
+        return nil;
+    }
+    return output;
+}
+
+
++ (id<MTLTexture>)applyDepthHazeToColorTexture:(id<MTLTexture>)colorTexture
+                                  depthTexture:(id<MTLTexture>)depthTexture
+                                 depthEncoding:(HSDepthEncoding)depthEncoding
+                                     nearPlane:(float)nearPlane
+                                      farPlane:(float)farPlane
+                                      fogStart:(float)fogStart
+                                     fogFactor:(float)fogFactor
+                                      fogColor:(vector_float3)fogColor
+                                        device:(id<MTLDevice>)device
+                                  commandQueue:(id<MTLCommandQueue>)commandQueue
+                                         error:(NSError **)error {
+    if (![self validateFrameColorTexture:colorTexture depthTexture:depthTexture normalTexture:nil motionVectorTexture:nil device:device error:error]) return nil;
+    if (!depthTexture) {
+        HexiumShadeAssignError(error, 52, @"Depth haze requires a readable depth texture supplied by the host renderer.");
+        return nil;
+    }
+    if (!commandQueue || commandQueue.device != device) {
+        HexiumShadeAssignError(error, 53, @"The command queue must belong to the supplied Metal device.");
+        return nil;
+    }
+    if (depthEncoding < HSDepthEncodingDeviceZ || depthEncoding > HSDepthEncodingLinearViewDistance ||
+        !isfinite(nearPlane) || !isfinite(farPlane) || nearPlane <= 0.0f || farPlane <= nearPlane ||
+        !isfinite(fogStart) || fogStart < 0.0f || fogStart > 1.0f ||
+        !isfinite(fogFactor) || fogFactor <= 0.0f || fogFactor > 1.0f ||
+        !isfinite(fogColor.x) || !isfinite(fogColor.y) || !isfinite(fogColor.z)) {
+        HexiumShadeAssignError(error, 54, @"Depth haze settings or camera metadata are outside their valid ranges.");
+        return nil;
+    }
+    id<MTLComputePipelineState> pipeline = HexiumShadeDepthHazePipelineForDevice(device, error);
+    if (!pipeline) return nil;
+    MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:colorTexture.pixelFormat
+                                                                                         width:colorTexture.width
+                                                                                        height:colorTexture.height
+                                                                                     mipmapped:NO];
+    descriptor.storageMode = MTLStorageModePrivate;
+    descriptor.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+    id<MTLTexture> output = [device newTextureWithDescriptor:descriptor];
+    if (!output) {
+        HexiumShadeAssignError(error, 55, @"Could not allocate the depth haze output texture.");
+        return nil;
+    }
+    HSDepthHazeControls controls = {
+        .fogColorStart = { fogColor.x, fogColor.y, fogColor.z, fogStart },
+        .depthControls = { fogFactor, nearPlane, farPlane, (float)depthEncoding }
+    };
+    id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+    if (!commandBuffer) {
+        HexiumShadeAssignError(error, 56, @"Could not create the depth haze command buffer.");
+        return nil;
+    }
+    id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+    if (!encoder) {
+        HexiumShadeAssignError(error, 57, @"Could not create the depth haze compute encoder.");
+        return nil;
+    }
+    [encoder setComputePipelineState:pipeline];
+    [encoder setTexture:colorTexture atIndex:0];
+    [encoder setTexture:depthTexture atIndex:1];
+    [encoder setTexture:output atIndex:2];
+    [encoder setBytes:&controls length:sizeof(controls) atIndex:0];
+    NSUInteger tw = pipeline.threadExecutionWidth;
+    NSUInteger th = MAX(1, pipeline.maxTotalThreadsPerThreadgroup / tw);
+    [encoder dispatchThreads:MTLSizeMake(colorTexture.width, colorTexture.height, 1)
+       threadsPerThreadgroup:MTLSizeMake(tw, th, 1)];
+    [encoder endEncoding];
+    [commandBuffer commit];
+    [commandBuffer waitUntilCompleted];
+    if (commandBuffer.status == MTLCommandBufferStatusError) {
+        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:58 userInfo:@{NSLocalizedDescriptionKey: @"Depth haze processing failed."}];
         return nil;
     }
     return output;
