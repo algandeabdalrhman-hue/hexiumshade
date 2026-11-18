@@ -34,7 +34,9 @@ static void SHKernelCacheSetError(NSError **error, NSInteger code, NSString *mes
     }
 
     // Include library identity so identically named functions in different libraries never collide.
-    NSString *key = [NSString stringWithFormat:@"%p:%@", (__bridge void *)resolvedLibrary, functionName];
+    NSString *key = library
+        ? [NSString stringWithFormat:@"library:%p:%@", (__bridge void *)library, functionName]
+        : [NSString stringWithFormat:@"default:%@", functionName];
     @synchronized (self.deviceCaches) {
         NSMutableDictionary *cache = [self.deviceCaches objectForKey:device];
         if (!cache) {
