@@ -329,6 +329,77 @@ typedef struct {
 }
 
 
+
++ (id<MTLTexture>)applyADOFToColorTexture:(id<MTLTexture>)colorTexture
+                            depthTexture:(id<MTLTexture>)depthTexture
+                           depthEncoding:(HSDepthEncoding)depthEncoding
+                               nearPlane:(float)nearPlane
+                                farPlane:(float)farPlane
+                            focusDistance:(float)focusDistance
+                                focusRange:(float)focusRange
+                                blurRadius:(float)blurRadius
+                                    device:(id<MTLDevice>)device
+                              commandQueue:(id<MTLCommandQueue>)commandQueue
+                                     error:(NSError **)error {
+    if (![self validateFrameColorTexture:colorTexture depthTexture:depthTexture normalTexture:nil motionVectorTexture:nil device:device error:error]) return nil;
+    if (!depthTexture) {
+        HexiumShadeAssignError(error, 62, @"ADOF requires a readable depth texture supplied by the host renderer.");
+        return nil;
+    }
+    if (!commandQueue || commandQueue.device != device) {
+        HexiumShadeAssignError(error, 63, @"The command queue must belong to the supplied Metal device.");
+        return nil;
+    }
+    if (depthEncoding < HSDepthEncodingDeviceZ || depthEncoding > HSDepthEncodingLinearViewDistance ||
+        !isfinite(nearPlane) || !isfinite(farPlane) || nearPlane <= 0.0f || farPlane <= nearPlane ||
+        !isfinite(focusDistance) || focusDistance < 0.0f || focusDistance > 1.0f ||
+        !isfinite(focusRange) || focusRange < 0.0f || focusRange >= 1.0f ||
+        !isfinite(blurRadius) || blurRadius < 0.0f || blurRadius > 12.0f) {
+        HexiumShadeAssignError(error, 64, @"ADOF camera metadata and controls are outside their valid ranges.");
+        return nil;
+    }
+    id<MTLComputePipelineState> pipeline = HexiumShadeADOFPipelineForDevice(device, error);
+    if (!pipeline) return nil;
+    MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:colorTexture.pixelFormat
+                                                                                         width:colorTexture.width
+                                                                                        height:colorTexture.height
+                                                                                     mipmapped:NO];
+    descriptor.storageMode = MTLStorageModePrivate;
+    descriptor.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+    id<MTLTexture> output = [device newTextureWithDescriptor:descriptor];
+    if (!output) {
+        HexiumShadeAssignError(error, 65, @"Could not allocate the ADOF output texture.");
+        return nil;
+    }
+    HSADOFControls controls = {
+        .focus = { focusDistance, focusRange, blurRadius, (float)depthEncoding },
+        .camera = { nearPlane, farPlane, 0.0f, 0.0f }
+    };
+    id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+    id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+    if (!commandBuffer || !encoder) {
+        HexiumShadeAssignError(error, 66, @"Could not create the ADOF command buffer or compute encoder.");
+        return nil;
+    }
+    [encoder setComputePipelineState:pipeline];
+    [encoder setTexture:colorTexture atIndex:0];
+    [encoder setTexture:depthTexture atIndex:1];
+    [encoder setTexture:output atIndex:2];
+    [encoder setBytes:&controls length:sizeof(controls) atIndex:0];
+    NSUInteger tw = pipeline.threadExecutionWidth;
+    NSUInteger th = MAX(1, pipeline.maxTotalThreadsPerThreadgroup / tw);
+    [encoder dispatchThreads:MTLSizeMake(colorTexture.width, colorTexture.height, 1)
+       threadsPerThreadgroup:MTLSizeMake(tw, th, 1)];
+    [encoder endEncoding];
+    [commandBuffer commit];
+    [commandBuffer waitUntilCompleted];
+    if (commandBuffer.status == MTLCommandBufferStatusError) {
+        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:67 userInfo:@{NSLocalizedDescriptionKey: @"ADOF processing failed."}];
+        return nil;
+    }
+    return output;
+}
+
 + (id<MTLTexture>)applyDepthHazeToColorTexture:(id<MTLTexture>)colorTexture
                                   depthTexture:(id<MTLTexture>)depthTexture
                                  depthEncoding:(HSDepthEncoding)depthEncoding
