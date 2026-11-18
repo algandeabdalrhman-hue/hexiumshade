@@ -13,6 +13,7 @@
         A10000000000000000000010 = { isa = PBXBuildFile; fileRef = A20000000000000000000014; };
         A10000000000000000000011 = { isa = PBXBuildFile; fileRef = A20000000000000000000015; };
         A10000000000000000000012 = { isa = PBXBuildFile; fileRef = A20000000000000000000016; };
+        A10000000000000000000013 = { isa = PBXBuildFile; fileRef = A20000000000000000000018; };
 
         A20000000000000000000011 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SHKernelCache.h; sourceTree = "<group>"; };
         A20000000000000000000012 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SHKernelCache.m; sourceTree = "<group>"; };
@@ -20,6 +21,8 @@
         A20000000000000000000014 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SHBindingTable.m; sourceTree = "<group>"; };
         A20000000000000000000015 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SHComputeDispatcher.h; sourceTree = "<group>"; };
         A20000000000000000000016 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SHComputeDispatcher.m; sourceTree = "<group>"; };
+        A20000000000000000000017 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SHADESApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+        A20000000000000000000018 = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 
         A30000000000000000000004 = {
             isa = PBXGroup;
@@ -143,6 +146,7 @@
             children = (
                 A30000000000000000000002,
                 A20000000000000000000005,
+                A20000000000000000000017,
                 A30000000000000000000003,
             );
             sourceTree = "<group>";
@@ -159,6 +163,7 @@
                 A20000000000000000000004,
                 A20000000000000000000006,
                 A20000000000000000000007,
+                A20000000000000000000018,
                 A30000000000000000000004,
             );
         };
@@ -199,6 +204,39 @@
             runOnlyForDeploymentPostprocessing = 0;
         };
 
+        A40000000000000000000004 = {
+            isa = PBXSourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (
+                A10000000000000000000013,
+                A10000000000000000000001,
+                A10000000000000000000002,
+                A10000000000000000000003,
+                A10000000000000000000008,
+                A10000000000000000000010,
+                A10000000000000000000012,
+            );
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+
+        A40000000000000000000005 = {
+            isa = PBXFrameworksBuildPhase;
+            buildActionMask = 2147483647;
+            files = (
+                A10000000000000000000004,
+                A10000000000000000000005,
+                A10000000000000000000006,
+            );
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+
+        A40000000000000000000006 = {
+            isa = PBXResourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = ();
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+
         A40000000000000000000003 = {
             isa = PBXResourcesBuildPhase;
             buildActionMask = 2147483647;
@@ -222,12 +260,31 @@
             productType = "com.apple.product-type.library.dynamic";
         };
 
+        A50000000000000000000003 = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = A60000000000000000000003;
+            buildPhases = (
+                A40000000000000000000004,
+                A40000000000000000000005,
+                A40000000000000000000006,
+            );
+            buildRules = ();
+            dependencies = ();
+            name = SHADESApp;
+            productName = SHADESApp;
+            productReference = A20000000000000000000017;
+            productType = "com.apple.product-type.application";
+        };
+
         A50000000000000000000002 = {
             isa = PBXProject;
             attributes = {
                 LastUpgradeCheck = 1600;
                 TargetAttributes = {
                     A50000000000000000000001 = {
+                        CreatedOnToolsVersion = 16.0;
+                    };
+                    A50000000000000000000003 = {
                         CreatedOnToolsVersion = 16.0;
                     };
                 };
@@ -241,6 +298,7 @@
             projectRoot = "";
             targets = (
                 A50000000000000000000001,
+                A50000000000000000000003,
             );
         };
 
@@ -280,6 +338,54 @@
                 IPHONEOS_DEPLOYMENT_TARGET = 15.0;
             };
             name = Debug;
+        };
+
+        A70000000000000000000003 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CODE_SIGNING_ALLOWED = NO;
+                GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_KEY_CFBundleDisplayName = SHADES;
+                INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+                INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.hexiumshade.shades;
+                PRODUCT_NAME = SHADESApp;
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = iphoneos;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Release;
+        };
+
+        A70000000000000000000004 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                ARCHS = arm64;
+                CODE_SIGNING_ALLOWED = NO;
+                GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_KEY_CFBundleDisplayName = SHADES;
+                INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+                INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+                IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.hexiumshade.shades;
+                PRODUCT_NAME = SHADESApp;
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = iphoneos;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+
+        A60000000000000000000003 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (
+                A70000000000000000000003,
+                A70000000000000000000004,
+            );
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Release;
         };
 
         A60000000000000000000001 = {
