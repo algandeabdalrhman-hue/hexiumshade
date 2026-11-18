@@ -51,6 +51,73 @@ static id<MTLComputePipelineState> HexiumShadePipelineForDevice(id<MTLDevice> de
 
 @implementation HexiumShade
 
++ (BOOL)validateFrameInfo:(HSFrameInfo)frameInfo error:(NSError **)error {
+    if (!isfinite(frameInfo.nearPlane) || !isfinite(frameInfo.farPlane) ||
+        frameInfo.nearPlane <= 0.0f || frameInfo.farPlane <= frameInfo.nearPlane) {
+        HexiumShadeAssignError(error, 30, @"Camera near/far planes must be finite, positive, and far must exceed near.");
+        return NO;
+    }
+    if (!isfinite(frameInfo.deltaTime) || frameInfo.deltaTime < 0.0f) {
+        HexiumShadeAssignError(error, 31, @"Frame delta time must be finite and non-negative.");
+        return NO;
+    }
+    if (frameInfo.depthEncoding < HSDepthEncodingDeviceZ ||
+        frameInfo.depthEncoding > HSDepthEncodingLinearViewDistance ||
+        frameInfo.normalEncoding < HSNormalEncodingWorldSpace ||
+        frameInfo.normalEncoding > HSNormalEncodingEncoded01) {
+        HexiumShadeAssignError(error, 32, @"Unknown depth or normal encoding.");
+        return NO;
+    }
+    for (NSUInteger column = 0; column < 4; column++) {
+        for (NSUInteger row = 0; row < 4; row++) {
+            if (!isfinite(frameInfo.projectionMatrix.columns[column][row]) ||
+                !isfinite(frameInfo.inverseProjectionMatrix.columns[column][row]) ||
+                !isfinite(frameInfo.viewMatrix.columns[column][row])) {
+                HexiumShadeAssignError(error, 33, @"Camera matrices must contain only finite values.");
+                return NO;
+            }
+        }
+    }
+    return YES;
+}
+
++ (id<MTLTexture>)newIntermediateTextureWithWidth:(NSUInteger)width
+                                           height:(NSUInteger)height
+                                      pixelFormat:(MTLPixelFormat)pixelFormat
+                                           device:(id<MTLDevice>)device
+                                            error:(NSError **)error {
+    if (!device || width == 0 || height == 0) {
+        HexiumShadeAssignError(error, 34, @"A Metal device and non-zero texture dimensions are required.");
+        return nil;
+    }
+    switch (pixelFormat) {
+        case MTLPixelFormatRGBA8Unorm:
+        case MTLPixelFormatBGRA8Unorm:
+        case MTLPixelFormatRGBA16Float:
+        case MTLPixelFormatR16Float:
+        case MTLPixelFormatR32Float:
+        case MTLPixelFormatRG16Float:
+            break;
+        default:
+            HexiumShadeAssignError(error, 35, @"Unsupported intermediate texture pixel format.");
+            return nil;
+    }
+    MTLTextureDescriptor *descriptor =
+        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat
+                                                           width:width
+                                                          height:height
+                                                       mipmapped:NO];
+    descriptor.storageMode = MTLStorageModePrivate;
+    descriptor.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+    id<MTLTexture> texture = [device newTextureWithDescriptor:descriptor];
+    if (!texture) {
+        HexiumShadeAssignError(error, 36, @"Metal could not allocate the requested intermediate texture.");
+        return nil;
+    }
+    return texture;
+}
+
+
 + (BOOL)validateFrameColorTexture:(id<MTLTexture>)colorTexture
                      depthTexture:(id<MTLTexture>)depthTexture
                     normalTexture:(id<MTLTexture>)normalTexture
