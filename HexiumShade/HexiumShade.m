@@ -50,6 +50,82 @@ static id<MTLComputePipelineState> HexiumShadePipelineForDevice(id<MTLDevice> de
 }
 
 @implementation HexiumShade
+
++ (BOOL)validateFrameColorTexture:(id<MTLTexture>)colorTexture
+                     depthTexture:(id<MTLTexture>)depthTexture
+                    normalTexture:(id<MTLTexture>)normalTexture
+              motionVectorTexture:(id<MTLTexture>)motionVectorTexture
+                           device:(id<MTLDevice>)device
+                            error:(NSError **)error {
+    if (!colorTexture || !device) {
+        HexiumShadeAssignError(error, 20, @"A color texture and Metal device are required.");
+        return NO;
+    }
+    if (colorTexture.device != device || colorTexture.textureType != MTLTextureType2D ||
+        colorTexture.width == 0 || colorTexture.height == 0) {
+        HexiumShadeAssignError(error, 21, @"The color texture must be a non-empty 2D texture from the supplied Metal device.");
+        return NO;
+    }
+    if (colorTexture.usage != MTLTextureUsageUnknown && !(colorTexture.usage & MTLTextureUsageShaderRead)) {
+        HexiumShadeAssignError(error, 22, @"The color texture must allow shader reads.");
+        return NO;
+    }
+
+    NSArray *auxiliary = @[
+        depthTexture ?: (id)[NSNull null],
+        normalTexture ?: (id)[NSNull null],
+        motionVectorTexture ?: (id)[NSNull null]
+    ];
+    for (id candidate in auxiliary) {
+        if (candidate == [NSNull null]) continue;
+        id<MTLTexture> texture = candidate;
+        if (texture.device != device || texture.textureType != MTLTextureType2D ||
+            texture.width != colorTexture.width || texture.height != colorTexture.height) {
+            HexiumShadeAssignError(error, 23, @"All frame textures must be 2D, use the same Metal device, and match the color texture dimensions.");
+            return NO;
+        }
+        if (texture.usage != MTLTextureUsageUnknown && !(texture.usage & MTLTextureUsageShaderRead)) {
+            HexiumShadeAssignError(error, 24, @"Every supplied auxiliary texture must allow shader reads.");
+            return NO;
+        }
+    }
+
+    if (depthTexture && depthTexture.pixelFormat != MTLPixelFormatDepth32Float &&
+        depthTexture.pixelFormat != MTLPixelFormatR32Float) {
+        HexiumShadeAssignError(error, 25, @"Depth input must use Depth32Float or R32Float.");
+        return NO;
+    }
+    if (normalTexture && normalTexture.pixelFormat != MTLPixelFormatRGBA8Unorm &&
+        normalTexture.pixelFormat != MTLPixelFormatRGBA16Float) {
+        HexiumShadeAssignError(error, 26, @"Normal input must use RGBA8Unorm or RGBA16Float.");
+        return NO;
+    }
+    if (motionVectorTexture && motionVectorTexture.pixelFormat != MTLPixelFormatRG16Float &&
+        motionVectorTexture.pixelFormat != MTLPixelFormatRG32Float &&
+        motionVectorTexture.pixelFormat != MTLPixelFormatRGBA16Float) {
+        HexiumShadeAssignError(error, 27, @"Motion vectors must use RG16Float, RG32Float, or RGBA16Float.");
+        return NO;
+    }
+    return YES;
+}
+
++ (id<MTLTexture>)processFrameColorTexture:(id<MTLTexture>)colorTexture
+                              depthTexture:(id<MTLTexture>)depthTexture
+                             normalTexture:(id<MTLTexture>)normalTexture
+                       motionVectorTexture:(id<MTLTexture>)motionVectorTexture
+                                    device:(id<MTLDevice>)device
+                              commandQueue:(id<MTLCommandQueue>)commandQueue
+                                     error:(NSError **)error {
+    if (![self validateFrameColorTexture:colorTexture depthTexture:depthTexture normalTexture:normalTexture motionVectorTexture:motionVectorTexture device:device error:error]) return nil;
+    if (!commandQueue || commandQueue.device != device) {
+        HexiumShadeAssignError(error, 28, @"The command queue must belong to the supplied Metal device.");
+        return nil;
+    }
+    // Auxiliary textures are validated here for the host frame contract.
+    // Depth-aware effect passes will consume them in subsequent renderer stages.
+    return [self processTexture:colorTexture device:device commandQueue:commandQueue error:error];
+}
+
 + (NSString *)version { return @"1.2.0"; }
 
 + (NSDictionary<NSString *, NSString *> *)parseINI:(NSString *)ini {
