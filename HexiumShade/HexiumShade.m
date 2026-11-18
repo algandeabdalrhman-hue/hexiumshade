@@ -110,6 +110,50 @@ typedef struct {
     vector_float4 depthControls; // fog factor, near, far, depth encoding
 } HSDepthHazeControls;
 
+
+typedef struct {
+    vector_float4 focus;  // normalized focus distance, focus range, blur radius, depth encoding
+    vector_float4 camera; // near plane, far plane, unused, unused
+} HSADOFControls;
+
+static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice> device, NSError **error) {
+    static NSMapTable<id<MTLDevice>, id<MTLComputePipelineState>> *cache;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        cache = [NSMapTable weakToStrongObjectsMapTable];
+    });
+
+    @synchronized (cache) {
+        id<MTLComputePipelineState> cached = [cache objectForKey:device];
+        if (cached) return cached;
+
+        id<MTLLibrary> library = [device newDefaultLibrary];
+        if (!library) {
+            HexiumShadeAssignError(error, 68, @"The default Metal library is unavailable for ADOF.");
+            return nil;
+        }
+
+        id<MTLFunction> function = [library newFunctionWithName:@"hexiumshade_adof"];
+        if (!function) {
+            HexiumShadeAssignError(error, 69, @"Metal function hexiumshade_adof was not found in the default library.");
+            return nil;
+        }
+
+        NSError *pipelineError = nil;
+        id<MTLComputePipelineState> pipeline =
+            [device newComputePipelineStateWithFunction:function error:&pipelineError];
+        if (!pipeline) {
+            if (error) *error = pipelineError ?: [NSError errorWithDomain:HexiumShadeErrorDomain
+                                                                       code:70
+                                                                   userInfo:@{NSLocalizedDescriptionKey: @"Could not create the ADOF compute pipeline."}];
+            return nil;
+        }
+
+        [cache setObject:pipeline forKey:device];
+        return pipeline;
+    }
+}
+
 @implementation HexiumShade
 
 + (BOOL)validateFrameInfo:(HSFrameInfo)frameInfo error:(NSError **)error {
