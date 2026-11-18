@@ -131,3 +131,54 @@ kernel void hexiumshade_depth_haze(
     float3 result = mix(source.rgb, fogColor, saturate(fogAmount));
     outputTexture.write(float4(result, source.a), gid);
 }
+
+
+struct HSADOFControls {
+    float4 focus;       // normalized focus distance, focus range, blur radius pixels, depth encoding
+    float4 camera;      // near plane, far plane, unused, unused
+};
+
+kernel void hexiumshade_adof(
+    texture2d<float, access::read> colorTexture [[texture(0)]],
+    texture2d<float, access::read> depthTexture [[texture(1)]],
+    texture2d<float, access::write> outputTexture [[texture(2)]],
+    constant HSADOFControls &controls [[buffer(0)]],
+    uint2 gid [[thread_position_in_grid]]
+) {
+    uint width = outputTexture.get_width();
+    uint height = outputTexture.get_height();
+    if (gid.x >= width || gid.y >= height) return;
+
+    float4 center = colorTexture.read(gid);
+    float rawDepth = depthTexture.read(gid).r;
+    float viewDistance = hs_haze_view_distance(rawDepth, controls.camera.x,
+                                               controls.camera.y,
+                                               int(controls.focus.w));
+    float normalizedDepth = saturate((viewDistance - controls.camera.x) /
+                                     max(controls.camera.y - controls.camera.x, 1e-5f));
+    float defocus = saturate((abs(normalizedDepth - controls.focus.x) -
+                              controls.focus.y) / max(1.0f - controls.focus.y, 1e-4f));
+    float radius = controls.focus.z * defocus;
+    if (radius < 0.5f) {
+        outputTexture.write(center, gid);
+        return;
+    }
+
+    int r = max(1, int(round(min(radius, 12.0f))));
+    int2 p = int2(gid);
+    int2 maxCoord = int2(int(width) - 1, int(height) - 1);
+    const int2 offsets[8] = {
+        int2(-1, -1), int2(0, -1), int2(1, -1), int2(-1, 0),
+        int2(1, 0), int2(-1, 1), int2(0, 1), int2(1, 1)
+    };
+    float3 sum = center.rgb * 2.0f;
+    float weight = 2.0f;
+    for (uint i = 0; i < 8; ++i) {
+        int2 sampleCoord = clamp(p + offsets[i] * r, int2(0), maxCoord);
+        float3 sampleColor = colorTexture.read(uint2(sampleCoord)).rgb;
+        sum += sampleColor;
+        weight += 1.0f;
+    }
+    float3 blurred = sum / weight;
+    outputTexture.write(float4(mix(center.rgb, blurred, defocus), center.a), gid);
+}
