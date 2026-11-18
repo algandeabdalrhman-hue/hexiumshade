@@ -4,6 +4,31 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+
+typedef NS_ENUM(NSInteger, HSDepthEncoding) {
+    HSDepthEncodingDeviceZ = 0,
+    HSDepthEncodingLinear01 = 1,
+    HSDepthEncodingLinearViewDistance = 2
+};
+
+typedef NS_ENUM(NSInteger, HSNormalEncoding) {
+    HSNormalEncodingWorldSpace = 0,
+    HSNormalEncodingViewSpace = 1,
+    HSNormalEncodingEncoded01 = 2
+};
+
+/// Per-frame camera/depth metadata. Matrices are column-major Metal SIMD matrices.
+typedef struct {
+    simd_float4x4 projectionMatrix;
+    simd_float4x4 inverseProjectionMatrix;
+    simd_float4x4 viewMatrix;
+    float nearPlane;
+    float farPlane;
+    float deltaTime;
+    HSDepthEncoding depthEncoding;
+    HSNormalEncoding normalEncoding;
+} HSFrameInfo;
+
 @interface HexiumShade : NSObject
 
 + (NSString *)version;
@@ -12,6 +37,16 @@ NS_ASSUME_NONNULL_BEGIN
 + (BOOL)setQualityPreset:(NSString *)preset;
 + (NSString *)qualityPreset;
 + (NSDictionary<NSString *, NSNumber *> *)qualitySettings;
+
+/// Validates camera metadata required by depth-aware post-processing.
++ (BOOL)validateFrameInfo:(HSFrameInfo)frameInfo error:(NSError * _Nullable * _Nullable)error;
+
+/// Allocates a private intermediate texture with shader read/write access.
++ (nullable id<MTLTexture>)newIntermediateTextureWithWidth:(NSUInteger)width
+                                                    height:(NSUInteger)height
+                                               pixelFormat:(MTLPixelFormat)pixelFormat
+                                                    device:(id<MTLDevice>)device
+                                                     error:(NSError * _Nullable * _Nullable)error;
 
 /// Validates the color, depth, normal, and motion-vector textures supplied by a host renderer.
 + (BOOL)validateFrameColorTexture:(id<MTLTexture>)colorTexture
