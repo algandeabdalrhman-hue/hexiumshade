@@ -65,9 +65,9 @@ static void SHComputeDispatcherSetError(NSError **error, NSInteger code, NSStrin
     MTLSize threadsPerGroup = MTLSizeMake(tx, ty, tz);
 
     MTLSize threadgroups = MTLSizeMake(
-        (gridSize.width + tx - 1) / tx,
-        (gridSize.height + ty - 1) / ty,
-        (gridSize.depth + tz - 1) / tz
+        (gridSize.width / tx) + ((gridSize.width % tx) != 0),
+        (gridSize.height / ty) + ((gridSize.height % ty) != 0),
+        (gridSize.depth / tz) + ((gridSize.depth % tz) != 0)
     );
 
     [encoder dispatchThreadgroups:threadgroups threadsPerThreadgroup:threadsPerGroup];
