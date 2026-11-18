@@ -50,6 +50,36 @@ static id<MTLComputePipelineState> HexiumShadePipelineForDevice(id<MTLDevice> de
     }
 }
 
+
+static id<MTLComputePipelineState> HexiumShadeMXAOPipelineForDevice(id<MTLDevice> device, NSError **error) {
+    static NSMapTable<id<MTLDevice>, id<MTLComputePipelineState>> *cache;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{ cache = [NSMapTable weakToStrongObjectsMapTable]; });
+    @synchronized (cache) {
+        id<MTLComputePipelineState> cached = [cache objectForKey:device];
+        if (cached) return cached;
+        id<MTLLibrary> library = [device newDefaultLibrary];
+        id<MTLFunction> function = [library newFunctionWithName:@"hexiumshade_mxao"];
+        if (!function) {
+            HexiumShadeAssignError(error, 40, @"Metal function hexiumshade_mxao was not found in the default library.");
+            return nil;
+        }
+        NSError *pipelineError = nil;
+        id<MTLComputePipelineState> pipeline = [device newComputePipelineStateWithFunction:function error:&pipelineError];
+        if (!pipeline) {
+            if (error) *error = pipelineError ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:41 userInfo:@{NSLocalizedDescriptionKey: @"Could not create the MXAO compute pipeline."}];
+            return nil;
+        }
+        [cache setObject:pipeline forKey:device];
+        return pipeline;
+    }
+}
+
+typedef struct {
+    vector_float4 parameters; // radius pixels, intensity, normal bias, depth encoding
+    vector_float4 camera;     // near plane, far plane, normal encoding, unused
+} HSMXAOControls;
+
 @implementation HexiumShade
 
 + (BOOL)validateFrameInfo:(HSFrameInfo)frameInfo error:(NSError **)error {
@@ -192,6 +222,80 @@ static id<MTLComputePipelineState> HexiumShadePipelineForDevice(id<MTLDevice> de
     // Auxiliary textures are validated here for the host frame contract.
     // Depth-aware effect passes will consume them in subsequent renderer stages.
     return [self processTexture:colorTexture device:device commandQueue:commandQueue error:error];
+}
+
+
++ (id<MTLTexture>)applyMXAOToColorTexture:(id<MTLTexture>)colorTexture
+                             depthTexture:(id<MTLTexture>)depthTexture
+                            normalTexture:(id<MTLTexture>)normalTexture
+                            depthEncoding:(HSDepthEncoding)depthEncoding
+                           normalEncoding:(HSNormalEncoding)normalEncoding
+                                nearPlane:(float)nearPlane
+                                 farPlane:(float)farPlane
+                                   radius:(float)radius
+                                 intensity:(float)intensity
+                               normalBias:(float)normalBias
+                                   device:(id<MTLDevice>)device
+                             commandQueue:(id<MTLCommandQueue>)commandQueue
+                                    error:(NSError **)error {
+    if (![self validateFrameColorTexture:colorTexture depthTexture:depthTexture normalTexture:normalTexture motionVectorTexture:nil device:device error:error]) return nil;
+    if (!depthTexture || !normalTexture) {
+        HexiumShadeAssignError(error, 42, @"MXAO requires both depth and normal textures from the host renderer.");
+        return nil;
+    }
+    if (!commandQueue || commandQueue.device != device) {
+        HexiumShadeAssignError(error, 43, @"The command queue must belong to the supplied Metal device.");
+        return nil;
+    }
+    if (depthEncoding < HSDepthEncodingDeviceZ || depthEncoding > HSDepthEncodingLinearViewDistance ||
+        normalEncoding < HSNormalEncodingWorldSpace || normalEncoding > HSNormalEncodingEncoded01 ||
+        !isfinite(nearPlane) || !isfinite(farPlane) || nearPlane <= 0.0f || farPlane <= nearPlane ||
+        !isfinite(radius) || radius <= 0.0f || !isfinite(intensity) || intensity < 0.0f ||
+        !isfinite(normalBias) || normalBias < 0.0f) {
+        HexiumShadeAssignError(error, 44, @"MXAO camera metadata and controls are outside their valid ranges.");
+        return nil;
+    }
+    id<MTLComputePipelineState> pipeline = HexiumShadeMXAOPipelineForDevice(device, error);
+    if (!pipeline) return nil;
+    MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:colorTexture.pixelFormat
+                                                                                         width:colorTexture.width
+                                                                                        height:colorTexture.height
+                                                                                     mipmapped:NO];
+    descriptor.storageMode = MTLStorageModePrivate;
+    descriptor.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+    id<MTLTexture> output = [device newTextureWithDescriptor:descriptor];
+    if (!output) {
+        HexiumShadeAssignError(error, 45, @"Could not allocate the MXAO output texture.");
+        return nil;
+    }
+    HSMXAOControls controls = {
+        .parameters = { fminf(radius, 32.0f), fminf(intensity, 8.0f), fminf(normalBias, 1.0f), (float)depthEncoding },
+        .camera = { nearPlane, farPlane, (float)normalEncoding, 0.0f }
+    };
+    id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+    id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+    if (!commandBuffer || !encoder) {
+        HexiumShadeAssignError(error, 46, @"Could not create the MXAO command buffer or compute encoder.");
+        return nil;
+    }
+    [encoder setComputePipelineState:pipeline];
+    [encoder setTexture:colorTexture atIndex:0];
+    [encoder setTexture:depthTexture atIndex:1];
+    [encoder setTexture:normalTexture atIndex:2];
+    [encoder setTexture:output atIndex:3];
+    [encoder setBytes:&controls length:sizeof(controls) atIndex:0];
+    NSUInteger tw = pipeline.threadExecutionWidth;
+    NSUInteger th = MAX(1, pipeline.maxTotalThreadsPerThreadgroup / tw);
+    [encoder dispatchThreads:MTLSizeMake(colorTexture.width, colorTexture.height, 1)
+       threadsPerThreadgroup:MTLSizeMake(tw, th, 1)];
+    [encoder endEncoding];
+    [commandBuffer commit];
+    [commandBuffer waitUntilCompleted];
+    if (commandBuffer.status == MTLCommandBufferStatusError) {
+        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:47 userInfo:@{NSLocalizedDescriptionKey: @"MXAO processing failed."}];
+        return nil;
+    }
+    return output;
 }
 
 + (NSString *)version { return @"1.2.0"; }
