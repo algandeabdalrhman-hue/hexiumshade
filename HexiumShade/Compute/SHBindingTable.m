@@ -31,7 +31,7 @@ static void SHBindingTableSetError(NSError **error, NSInteger code, NSString *me
         for (NSUInteger i = 0; i < SHBindingTableSlotCount; i++) {
             [_buffers addObject:[NSNull null]];
             [_bufferOffsets addObject:@0];
-            [_bufferDirty addObject:@YES];
+            [_bufferDirty addObject:[NSNumber numberWithBool:YES]];
             [_byteData addObject:[NSNull null]];
             [_textures addObject:[NSNull null]];
             [_textureDirty addObject:@YES];
@@ -67,8 +67,8 @@ static void SHBindingTableSetError(NSError **error, NSInteger code, NSString *me
 
 - (BOOL)setBytes:(const void *)bytes length:(NSUInteger)length atIndex:(NSUInteger)index error:(NSError **)error {
     if (![self validIndex:index error:error]) return NO;
-    if (!bytes || length == 0) {
-        SHBindingTableSetError(error, 3, @"Inline buffer data and a non-zero length are required.");
+    if (!bytes || length == 0 || length > 4096) {
+        SHBindingTableSetError(error, 3, @"Inline buffer data must be non-null and between 1 and 4096 bytes.");
         return NO;
     }
     @synchronized (self) {
@@ -125,7 +125,7 @@ static void SHBindingTableSetError(NSError **error, NSInteger code, NSString *me
                 } else {
                     [encoder setBuffer:nil offset:0 atIndex:i];
                 }
-                self.bufferDirty[i] = @NO;
+                self.bufferDirty[i] = [NSNumber numberWithBool:NO];
             }
             if (self.textureDirty[i].boolValue) {
                 id texture = self.textures[i];
