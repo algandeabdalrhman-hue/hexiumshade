@@ -91,3 +91,43 @@ kernel void hexiumshade_mxao(
     float ambientFactor = 1.0f - ao * 0.72f;
     outputTexture.write(float4(source.rgb * ambientFactor, source.a), gid);
 }
+
+
+struct HSDepthHazeControls {
+    float4 fogColorStart; // linear RGB fog color, normalized fog start
+    float4 depthControls; // fog factor, near plane, far plane, depth encoding
+};
+
+static float hs_haze_view_distance(float rawDepth, float nearPlane, float farPlane, int encoding) {
+    if (encoding == 2) return max(rawDepth, nearPlane);
+    if (encoding == 1) return mix(nearPlane, farPlane, saturate(rawDepth));
+    float z = saturate(rawDepth);
+    return (nearPlane * farPlane) / max(farPlane - z * (farPlane - nearPlane), 1e-5f);
+}
+
+// Depth haze/fog composite. Fog is blended in linear color space.
+kernel void hexiumshade_depth_haze(
+    texture2d<float, access::read> colorTexture [[texture(0)]],
+    texture2d<float, access::read> depthTexture [[texture(1)]],
+    texture2d<float, access::write> outputTexture [[texture(2)]],
+    constant HSDepthHazeControls &controls [[buffer(0)]],
+    uint2 gid [[thread_position_in_grid]]
+) {
+    uint width = outputTexture.get_width();
+    uint height = outputTexture.get_height();
+    if (gid.x >= width || gid.y >= height) return;
+
+    float4 source = colorTexture.read(gid);
+    float rawDepth = depthTexture.read(gid).r;
+    float viewDistance = hs_haze_view_distance(rawDepth, controls.depthControls.y,
+                                               controls.depthControls.z,
+                                               int(controls.depthControls.w));
+    float normalizedDistance = saturate((viewDistance - controls.depthControls.y) /
+                                        max(controls.depthControls.z - controls.depthControls.y, 1e-5f));
+    float fogStart = controls.fogColorStart.w;
+    float fogFactor = max(controls.depthControls.x, 1e-5f);
+    float fogAmount = smoothstep(fogStart, min(1.0f, fogStart + fogFactor), normalizedDistance);
+    float3 fogColor = controls.fogColorStart.rgb;
+    float3 result = mix(source.rgb, fogColor, saturate(fogAmount));
+    outputTexture.write(float4(result, source.a), gid);
+}
