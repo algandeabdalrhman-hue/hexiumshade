@@ -217,7 +217,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     return YES;
 }
 
-+ (id<MTLTexture>)newIntermediateTextureWithWidth:(NSUInteger)width
++ (id<MTLTexture>)createIntermediateTextureWithWidth:(NSUInteger)width
                                            height:(NSUInteger)height
                                       pixelFormat:(MTLPixelFormat)pixelFormat
                                            device:(id<MTLDevice>)device
@@ -257,8 +257,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
                     normalTexture:(id<MTLTexture>)normalTexture
               motionVectorTexture:(id<MTLTexture>)motionVectorTexture
                            device:(id<MTLDevice>)device
-                            error:(NSError **)error {    if (!colorTexture || !device) {
-        HexiumShadeAssignError(error, 20, @"A color texture and Metal device are required.");
+                            error:(NSError **)error {    if (!colorTexture || !device) {        HexiumShadeAssignError(error, 20, @"A color texture and Metal device are required.");
         return NO;
     }
     if (colorTexture.device != device || colorTexture.textureType != MTLTextureType2D ||
@@ -405,7 +404,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
         [quality[@"saturation"] floatValue],
         0.0f
     };
-    id<MTLTexture> colorOutput = [self newIntermediateTextureWithWidth:colorTexture.width
+    id<MTLTexture> colorOutput = [self createIntermediateTextureWithWidth:colorTexture.width
                                                                height:colorTexture.height
                                                           pixelFormat:colorTexture.pixelFormat
                                                                device:device
@@ -417,7 +416,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     current = colorOutput;
 
     if (mxaoEnabled) {
-        id<MTLTexture> output = [self newIntermediateTextureWithWidth:colorTexture.width
+        id<MTLTexture> output = [self createIntermediateTextureWithWidth:colorTexture.width
                                                                height:colorTexture.height
                                                           pixelFormat:colorTexture.pixelFormat
                                                                device:device
@@ -440,7 +439,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     }
 
     if (hazeEnabled) {
-        id<MTLTexture> output = [self newIntermediateTextureWithWidth:colorTexture.width
+        id<MTLTexture> output = [self createIntermediateTextureWithWidth:colorTexture.width
                                                                height:colorTexture.height
                                                           pixelFormat:colorTexture.pixelFormat
                                                                device:device
@@ -461,7 +460,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     }
 
     if (adofEnabled) {
-        id<MTLTexture> output = [self newIntermediateTextureWithWidth:colorTexture.width
+        id<MTLTexture> output = [self createIntermediateTextureWithWidth:colorTexture.width
                                                                height:colorTexture.height
                                                           pixelFormat:colorTexture.pixelFormat
                                                                device:device
@@ -517,8 +516,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     }
     if (depthEncoding < HSDepthEncodingDeviceZ || depthEncoding > HSDepthEncodingLinearViewDistance ||
         normalEncoding < HSNormalEncodingWorldSpace || normalEncoding > HSNormalEncodingEncoded01 ||        !isfinite(nearPlane) || !isfinite(farPlane) || nearPlane <= 0.0f || farPlane <= nearPlane ||
-        !isfinite(radius) || radius <= 0.0f || !isfinite(intensity) || intensity < 0.0f ||
-        !isfinite(normalBias) || normalBias < 0.0f) {
+        !isfinite(radius) || radius <= 0.0f || !isfinite(intensity) || intensity < 0.0f ||        !isfinite(normalBias) || normalBias < 0.0f) {
         HexiumShadeAssignError(error, 44, @"MXAO camera metadata and controls are outside their valid ranges.");
         return nil;
     }
