@@ -31,7 +31,7 @@ static void SHBindingTableSetError(NSError **error, NSInteger code, NSString *me
         for (NSUInteger i = 0; i < SHBindingTableSlotCount; i++) {
             [_buffers addObject:[NSNull null]];
             [_bufferOffsets addObject:@0];
-            [_bufferDirty addObject:[NSNumber numberWithBool:YES]];
+            [_bufferDirty addObject:@YES];
             [_byteData addObject:[NSNull null]];
             [_textures addObject:[NSNull null]];
             [_textureDirty addObject:@YES];
@@ -107,35 +107,37 @@ static void SHBindingTableSetError(NSError **error, NSInteger code, NSString *me
         SHBindingTableSetError(error, 4, @"A compute encoder and Metal device are required.");
         return NO;
     }
+
+    // Metal argument bindings belong to a command encoder, not to this table.
+    // A fresh encoder starts unbound, so replay every slot on every dispatch.
+    // Dirty flags track table mutations for diagnostics/future batching only;
+    // they must never suppress a bind on a newly-created encoder.
     @synchronized (self) {
         for (NSUInteger i = 0; i < SHBindingTableSlotCount; i++) {
-            if (self.bufferDirty[i].boolValue) {
-                id bytes = self.byteData[i];
-                id buffer = self.buffers[i];
-                if (bytes != [NSNull null]) {
-                    NSData *data = bytes;
-                    [encoder setBytes:data.bytes length:data.length atIndex:i];
-                } else if (buffer != [NSNull null]) {
-                    id<MTLBuffer> metalBuffer = buffer;
-                    if (metalBuffer.device != device) {
-                        SHBindingTableSetError(error, 5, @"A bound buffer belongs to a different Metal device.");
-                        return NO;
-                    }
-                    [encoder setBuffer:metalBuffer offset:self.bufferOffsets[i].unsignedIntegerValue atIndex:i];
-                } else {
-                    [encoder setBuffer:nil offset:0 atIndex:i];
-                }
-                self.bufferDirty[i] = [NSNumber numberWithBool:NO];
-            }
-            if (self.textureDirty[i].boolValue) {
-                id texture = self.textures[i];
-                if (texture != [NSNull null] && ((id<MTLTexture>)texture).device != device) {
-                    SHBindingTableSetError(error, 6, @"A bound texture belongs to a different Metal device.");
+            id bytes = self.byteData[i];
+            id buffer = self.buffers[i];
+            if (bytes != [NSNull null]) {
+                NSData *data = bytes;
+                [encoder setBytes:data.bytes length:data.length atIndex:i];
+            } else if (buffer != [NSNull null]) {
+                id<MTLBuffer> metalBuffer = buffer;
+                if (metalBuffer.device != device) {
+                    SHBindingTableSetError(error, 5, @"A bound buffer belongs to a different Metal device.");
                     return NO;
                 }
-                [encoder setTexture:(texture == [NSNull null] ? nil : texture) atIndex:i];
-                self.textureDirty[i] = @NO;
+                [encoder setBuffer:metalBuffer offset:self.bufferOffsets[i].unsignedIntegerValue atIndex:i];
+            } else {
+                [encoder setBuffer:nil offset:0 atIndex:i];
             }
+            self.bufferDirty[i] = @NO;
+
+            id texture = self.textures[i];
+            if (texture != [NSNull null] && ((id<MTLTexture>)texture).device != device) {
+                SHBindingTableSetError(error, 6, @"A bound texture belongs to a different Metal device.");
+                return NO;
+            }
+            [encoder setTexture:(texture == [NSNull null] ? nil : texture) atIndex:i];
+            self.textureDirty[i] = @NO;
         }
     }
     return YES;
