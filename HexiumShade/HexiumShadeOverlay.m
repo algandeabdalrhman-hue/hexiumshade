@@ -19,55 +19,118 @@
 
 @implementation HexiumShadeOverlay
 
++ (void)installPresentationObservers {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+        // A host can request presentation before its first key window exists.
+        // Retry on activation/key-window changes instead of silently giving up.
+        [center addObserverForName:UIApplicationDidBecomeActiveNotification
+                            object:nil
+                             queue:NSOperationQueue.mainQueue
+                        usingBlock:^(__unused NSNotification *note) {
+            [self showOverlay];
+        }];
+        [center addObserverForName:UIWindowDidBecomeKeyNotification
+                            object:nil
+                             queue:NSOperationQueue.mainQueue
+                        usingBlock:^(NSNotification *note) {
+            UIWindow *window = note.object;
+            if (window && window.windowScene.activationState == UISceneActivationStateForegroundActive) {
+                [self attachOverlayToWindow:window];
+            } else {
+                [self showOverlay];
+            }
+        }];
+        [center addObserverForName:UISceneDidActivateNotification
+                            object:nil
+                             queue:NSOperationQueue.mainQueue
+                        usingBlock:^(__unused NSNotification *note) {
+            [self showOverlay];
+        }];
+    });
+}
+
 + (void)showOverlay {
+    [self installPresentationObservers];
     dispatch_async(dispatch_get_main_queue(), ^{
         UIApplication *application = UIApplication.sharedApplication;
-        UIWindow *window = nil;
+        if (application.applicationState != UIApplicationStateActive) {
+            NSLog(@"SHADES: waiting for the host app to become active before presenting the panel.");
+            return;
+        }
 
-        // Prefer the active scene's key window. On iOS 13+, the legacy
-        // application.windows array may be empty or may point at another scene.
+        UIWindow *window = nil;
+        // Prefer the key window from a foreground-active scene.
         for (UIScene *scene in application.connectedScenes) {
-            if (scene.activationState != UISceneActivationStateForegroundActive) continue;
-            if (![scene isKindOfClass:UIWindowScene.class]) continue;
+            if (scene.activationState != UISceneActivationStateForegroundActive ||
+                ![scene isKindOfClass:UIWindowScene.class]) continue;
             UIWindowScene *windowScene = (UIWindowScene *)scene;
             for (UIWindow *candidate in windowScene.windows) {
-                if (candidate.isKeyWindow) {
+                if (candidate.isKeyWindow && !candidate.hidden && candidate.alpha > 0.01) {
                     window = candidate;
                     break;
                 }
             }
             if (window) break;
-            if (!window) window = windowScene.windows.firstObject;
+            for (UIWindow *candidate in windowScene.windows) {
+                if (!candidate.hidden && candidate.alpha > 0.01 && candidate.rootViewController) {
+                    window = candidate;
+                    break;
+                }
+            }
+            if (window) break;
         }
 
-        // Compatibility fallback for apps that do not use scene-based windows.
+        // Legacy-window fallback for hosts without a connected UIWindowScene.
         if (!window) {
             for (UIWindow *candidate in application.windows) {
-                if (candidate.isKeyWindow) {
+                if (candidate.isKeyWindow && !candidate.hidden && candidate.alpha > 0.01) {
                     window = candidate;
                     break;
                 }
             }
         }
-        if (!window) window = application.windows.firstObject;
-        if (!window || !window.rootViewController) {
-            NSLog(@"SHADES: no active host window found; overlay was not presented.");
+        if (!window) {
+            for (UIWindow *candidate in application.windows) {
+                if (!candidate.hidden && candidate.alpha > 0.01 && candidate.rootViewController) {
+                    window = candidate;
+                    break;
+                }
+            }
+        }
+        if (!window) {
+            NSLog(@"SHADES: no visible foreground host window yet; will retry when the host becomes active or a window becomes key.");
             return;
         }
-
-        HexiumShadeOverlay *existing = objc_getAssociatedObject(window, "HexiumShadeOverlay");
-        if (existing) {
-            [window bringSubviewToFront:existing.panel];
-            existing.panel.hidden = NO;
-            return;
-        }
-
-        HexiumShadeOverlay *overlay = [HexiumShadeOverlay new];
-        objc_setAssociatedObject(window, "HexiumShadeOverlay", overlay, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        [overlay buildInterfaceInWindow:window];
-        [window bringSubviewToFront:overlay.panel];
-        NSLog(@"SHADES: overlay attached to active window (%@).", NSStringFromCGRect(window.bounds));
+        [self attachOverlayToWindow:window];
     });
+}
+
++ (void)attachOverlayToWindow:(UIWindow *)window {
+    if (!NSThread.isMainThread) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [self attachOverlayToWindow:window]; });
+        return;
+    }
+    if (!window || window.hidden || window.alpha <= 0.01) return;
+
+    HexiumShadeOverlay *existing = objc_getAssociatedObject(window, "HexiumShadeOverlay");
+    if (existing) {
+        if (existing.panel.superview != window) {
+            [existing.panel removeFromSuperview];
+            [window addSubview:existing.panel];
+        }
+        existing.panel.hidden = NO;
+        [window bringSubviewToFront:existing.panel];
+        if (existing.cube) [window bringSubviewToFront:existing.cube];
+        return;
+    }
+
+    HexiumShadeOverlay *overlay = [HexiumShadeOverlay new];
+    objc_setAssociatedObject(window, "HexiumShadeOverlay", overlay, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [overlay buildInterfaceInWindow:window];
+    [window bringSubviewToFront:overlay.panel];
+    NSLog(@"SHADES: GUI attached to foreground host window (%@).", NSStringFromCGRect(window.bounds));
 }
 
 - (UIColor *)blue:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue alpha:(CGFloat)alpha {
