@@ -65,6 +65,18 @@ typedef struct {
                                       commandQueue:(id<MTLCommandQueue>)commandQueue
                                              error:(NSError * _Nullable * _Nullable)error;
 
+/// Processes a host-owned frame through the enabled SHADES effect chain.
+/// Effects are read from the state saved by the control panel. Depth effects require
+/// matching host-supplied depth/normal textures and accurate HSFrameInfo metadata.
++ (nullable id<MTLTexture>)processFrameColorTexture:(id<MTLTexture>)colorTexture
+                                      depthTexture:(nullable id<MTLTexture>)depthTexture
+                                     normalTexture:(nullable id<MTLTexture>)normalTexture
+                               motionVectorTexture:(nullable id<MTLTexture>)motionVectorTexture
+                                         frameInfo:(HSFrameInfo)frameInfo
+                                            device:(id<MTLDevice>)device
+                                      commandQueue:(id<MTLCommandQueue>)commandQueue
+                                             error:(NSError * _Nullable * _Nullable)error;
+
 /// Applies screen-space ambient occlusion using host-supplied linear/device depth and normals.
 /// Returns a new color texture; inputs remain owned by the caller.
 + (nullable id<MTLTexture>)applyMXAOToColorTexture:(id<MTLTexture>)colorTexture
