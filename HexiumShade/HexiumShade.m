@@ -217,8 +217,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     id<MTLTexture> texture = [device newTextureWithDescriptor:descriptor];
     if (!texture) {
         HexiumShadeAssignError(error, 36, @"Metal could not allocate the requested intermediate texture.");
-        return nil;
-    }
+        return nil;    }
     return texture;
 }
 
@@ -288,14 +287,123 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
                                     device:(id<MTLDevice>)device
                               commandQueue:(id<MTLCommandQueue>)commandQueue
                                      error:(NSError **)error {
+    HSFrameInfo frameInfo = {
+        .projectionMatrix = matrix_identity_float4x4,
+        .inverseProjectionMatrix = matrix_identity_float4x4,
+        .viewMatrix = matrix_identity_float4x4,
+        .nearPlane = 0.1f,
+        .farPlane = 1000.0f,
+        .deltaTime = 0.0f,
+        .depthEncoding = HSDepthEncodingDeviceZ,
+        .normalEncoding = HSNormalEncodingWorldSpace
+    };
+    return [self processFrameColorTexture:colorTexture
+                             depthTexture:depthTexture
+                            normalTexture:normalTexture
+                      motionVectorTexture:motionVectorTexture
+                                frameInfo:frameInfo
+                                   device:device
+                             commandQueue:commandQueue
+                                    error:error];
+}
+
++ (id<MTLTexture>)processFrameColorTexture:(id<MTLTexture>)colorTexture
+                              depthTexture:(id<MTLTexture>)depthTexture
+                             normalTexture:(id<MTLTexture>)normalTexture
+                       motionVectorTexture:(id<MTLTexture>)motionVectorTexture
+                                 frameInfo:(HSFrameInfo)frameInfo
+                                    device:(id<MTLDevice>)device
+                              commandQueue:(id<MTLCommandQueue>)commandQueue
+                                     error:(NSError **)error {
     if (![self validateFrameColorTexture:colorTexture depthTexture:depthTexture normalTexture:normalTexture motionVectorTexture:motionVectorTexture device:device error:error]) return nil;
     if (!commandQueue || commandQueue.device != device) {
         HexiumShadeAssignError(error, 28, @"The command queue must belong to the supplied Metal device.");
         return nil;
     }
-    // Auxiliary textures are validated here for the host frame contract.
-    // Depth-aware effect passes will consume them in subsequent renderer stages.
-    return [self processTexture:colorTexture device:device commandQueue:commandQueue error:error];
+    if (![self validateFrameInfo:frameInfo error:error]) return nil;
+
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSDictionary<NSString *, NSNumber *> *states =
+        [defaults dictionaryForKey:@"HexiumShade.effectStates"] ?: @{};
+    NSString *ini = [defaults stringForKey:@"HexiumShade.importedPresetINI"] ?: @"";
+    NSDictionary<NSString *, NSString *> *preset = [self parseINI:ini];
+
+    id<MTLTexture> current = [self processTexture:colorTexture
+                                           device:device
+                                     commandQueue:commandQueue
+                                            error:error];
+    if (!current) return nil;
+
+    BOOL mxaoEnabled = [states[@"MXAO"] boolValue];
+    BOOL hazeEnabled = [states[@"DepthHaze"] boolValue];
+    BOOL adofEnabled = [states[@"ADOF"] boolValue];
+    BOOL ssrEnabled = [states[@"SSR"] boolValue];
+
+    if (mxaoEnabled) {
+        if (!depthTexture || !normalTexture) {
+            HexiumShadeAssignError(error, 80, @"MXAO is enabled but the host did not supply both depth and normal textures.");
+            return nil;
+        }
+        current = [self applyMXAOToColorTexture:current
+                                   depthTexture:depthTexture
+                                  normalTexture:normalTexture
+                                  depthEncoding:frameInfo.depthEncoding
+                                 normalEncoding:frameInfo.normalEncoding
+                                      nearPlane:frameInfo.nearPlane
+                                       farPlane:frameInfo.farPlane
+                                         radius:MIN(MAX([preset[@"MXAO_RADIUS"] floatValue] ?: 6.0f, 1.0f), 32.0f)
+                                      intensity:MIN(MAX([preset[@"MXAO_INTENSITY"] floatValue] ?: 1.15f, 0.0f), 8.0f)
+                                    normalBias:MIN(MAX([preset[@"MXAO_BIAS"] floatValue] ?: 0.025f, 0.0f), 1.0f)
+                                          device:device
+                                    commandQueue:commandQueue
+                                           error:error];
+        if (!current) return nil;
+    }
+
+    if (hazeEnabled) {
+        if (!depthTexture) {
+            HexiumShadeAssignError(error, 81, @"DepthHaze is enabled but the host did not supply a depth texture.");
+            return nil;
+        }
+        vector_float3 fogColor = (vector_float3){0.56f, 0.67f, 0.82f};
+        current = [self applyDepthHazeToColorTexture:current
+                                       depthTexture:depthTexture
+                                      depthEncoding:frameInfo.depthEncoding
+                                          nearPlane:frameInfo.nearPlane
+                                           fogStart:MIN(MAX([preset[@"DEPTHHAZE_START"] floatValue] ?: 0.55f, 0.0f), 1.0f)
+                                          fogFactor:MIN(MAX([preset[@"DEPTHHAZE_FACTOR"] floatValue] ?: 0.35f, 0.001f), 1.0f)
+                                           fogColor:fogColor
+                                             device:device
+                                       commandQueue:commandQueue
+                                              error:error];
+        if (!current) return nil;
+    }
+
+    if (adofEnabled) {
+        if (!depthTexture) {
+            HexiumShadeAssignError(error, 82, @"ADOF is enabled but the host did not supply a depth texture.");
+            return nil;
+        }
+        current = [self applyADOFToColorTexture:current
+                                    depthTexture:depthTexture
+                                   depthEncoding:frameInfo.depthEncoding
+                                       nearPlane:frameInfo.nearPlane
+                                        farPlane:frameInfo.farPlane
+                                   focusDistance:MIN(MAX([preset[@"ADOF_FOCUS"] floatValue] ?: 0.5f, 0.0f), 1.0f)
+                                      focusRange:MIN(MAX([preset[@"ADOF_RANGE"] floatValue] ?: 0.12f, 0.0f), 0.99f)
+                                      blurRadius:MIN(MAX([preset[@"ADOF_RADIUS"] floatValue] ?: 6.0f, 0.0f), 12.0f)
+                                           device:device
+                                     commandQueue:commandQueue
+                                            error:error];
+        if (!current) return nil;
+    }
+
+    if (ssrEnabled) {
+        HexiumShadeAssignError(error, 83, @"SSR is selected in the preset, but no Metal SSR kernel is implemented yet.");
+        return nil;
+    }
+
+    return current;
 }
 
 
@@ -437,8 +545,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     [encoder endEncoding];
     [commandBuffer commit];
     [commandBuffer waitUntilCompleted];
-    if (commandBuffer.status == MTLCommandBufferStatusError) {
-        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:67 userInfo:@{NSLocalizedDescriptionKey: @"ADOF processing failed."}];
+    if (commandBuffer.status == MTLCommandBufferStatusError) {        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain code:67 userInfo:@{NSLocalizedDescriptionKey: @"ADOF processing failed."}];
         return nil;
     }
     return output;
