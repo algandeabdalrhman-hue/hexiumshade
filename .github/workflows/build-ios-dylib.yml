@@ -35,12 +35,12 @@ jobs:
       - name: Package renderer dylib
         run: |
           mkdir -p output/renderer
-          DYLIB_PATH="$(find build/DerivedData/Build/Products -type f -name 'libHexiumShade.dylib' -print -quit)"
+          DYLIB_PATH="$(find build/DerivedData/Build/Products -type f -name 'libHexiumShade.dylib' ! -path '*.dSYM/*' -print -quit)"
           test -n "$DYLIB_PATH"
           file "$DYLIB_PATH"
           cp "$DYLIB_PATH" output/renderer/SHADES.dylib
           test -s output/renderer/SHADES.dylib
-          xcrun lipo -verify_arch arm64 output/renderer/SHADES.dylib
+          xcrun lipo output/renderer/SHADES.dylib -verify_arch arm64
 
       - name: Build SHADES app
         run: |
