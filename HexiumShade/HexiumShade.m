@@ -13,6 +13,37 @@ static void HexiumShadeAssignError(NSError **error, NSInteger code, NSString *me
     }
 }
 
+static BOOL HexiumShadeEncodePass(id<MTLCommandBuffer> commandBuffer,
+                                    id<MTLComputePipelineState> pipeline,
+                                    NSArray<id<MTLTexture>> *textures,
+                                    const void *controls,
+                                    NSUInteger controlsLength,
+                                    NSError **error) {
+    if (!commandBuffer || !pipeline || textures.count == 0) {
+        HexiumShadeAssignError(error, 90, @"A command buffer, pipeline, and texture bindings are required.");
+        return NO;
+    }
+    id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+    if (!encoder) {
+        HexiumShadeAssignError(error, 91, @"Could not create a compute encoder for the effect graph.");
+        return NO;
+    }
+    [encoder setComputePipelineState:pipeline];
+    for (NSUInteger index = 0; index < textures.count; index++) {
+        [encoder setTexture:textures[index] atIndex:index];
+    }
+    if (controls && controlsLength > 0) {
+        [encoder setBytes:controls length:controlsLength atIndex:0];
+    }
+    NSUInteger threadWidth = MAX((NSUInteger)1, pipeline.threadExecutionWidth);
+    NSUInteger threadHeight = MAX((NSUInteger)1, pipeline.maxTotalThreadsPerThreadgroup / threadWidth);
+    id<MTLTexture> output = textures.lastObject;
+    [encoder dispatchThreads:MTLSizeMake(output.width, output.height, 1)
+       threadsPerThreadgroup:MTLSizeMake(threadWidth, threadHeight, 1)];
+    [encoder endEncoding];
+    return YES;
+}
+
 static id<MTLComputePipelineState> HexiumShadePipelineForDevice(id<MTLDevice> device, NSError **error) {
     static NSMapTable<id<MTLDevice>, id<MTLComputePipelineState>> *cache;
     static dispatch_once_t onceToken;
@@ -217,8 +248,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     id<MTLTexture> texture = [device newTextureWithDescriptor:descriptor];
     if (!texture) {
         HexiumShadeAssignError(error, 36, @"Metal could not allocate the requested intermediate texture.");
-        return nil;    }
-    return texture;
+        return nil;    }    return texture;
 }
 
 
@@ -322,90 +352,147 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
     }
     if (![self validateFrameInfo:frameInfo error:error]) return nil;
 
+    switch (colorTexture.pixelFormat) {
+        case MTLPixelFormatRGBA8Unorm:
+        case MTLPixelFormatBGRA8Unorm:
+        case MTLPixelFormatRGBA16Float:
+            break;
+        default:
+            HexiumShadeAssignError(error, 84, @"The effect graph requires RGBA8Unorm, BGRA8Unorm, or RGBA16Float color input.");
+            return nil;
+    }
+
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     NSDictionary<NSString *, NSNumber *> *states =
         [defaults dictionaryForKey:@"HexiumShade.effectStates"] ?: @{};
-    NSString *ini = [defaults stringForKey:@"HexiumShade.importedPresetINI"] ?: @"";
-    NSDictionary<NSString *, NSString *> *preset = [self parseINI:ini];
-
-    id<MTLTexture> current = [self processTexture:colorTexture
-                                           device:device
-                                     commandQueue:commandQueue
-                                            error:error];
-    if (!current) return nil;
+    NSDictionary<NSString *, NSString *> *preset =
+        [self parseINI:[defaults stringForKey:@"HexiumShade.importedPresetINI"] ?: @""];
 
     BOOL mxaoEnabled = [states[@"MXAO"] boolValue];
     BOOL hazeEnabled = [states[@"DepthHaze"] boolValue];
     BOOL adofEnabled = [states[@"ADOF"] boolValue];
-    BOOL ssrEnabled = [states[@"SSR"] boolValue];
-
-    if (mxaoEnabled) {
-        if (!depthTexture || !normalTexture) {
-            HexiumShadeAssignError(error, 80, @"MXAO is enabled but the host did not supply both depth and normal textures.");
-            return nil;
-        }
-        current = [self applyMXAOToColorTexture:current
-                                   depthTexture:depthTexture
-                                  normalTexture:normalTexture
-                                  depthEncoding:frameInfo.depthEncoding
-                                 normalEncoding:frameInfo.normalEncoding
-                                      nearPlane:frameInfo.nearPlane
-                                       farPlane:frameInfo.farPlane
-                                         radius:MIN(MAX([preset[@"MXAO_RADIUS"] floatValue] ?: 6.0f, 1.0f), 32.0f)
-                                      intensity:MIN(MAX([preset[@"MXAO_INTENSITY"] floatValue] ?: 1.15f, 0.0f), 8.0f)
-                                    normalBias:MIN(MAX([preset[@"MXAO_BIAS"] floatValue] ?: 0.025f, 0.0f), 1.0f)
-                                          device:device
-                                    commandQueue:commandQueue
-                                           error:error];
-        if (!current) return nil;
-    }
-
-    if (hazeEnabled) {
-        if (!depthTexture) {
-            HexiumShadeAssignError(error, 81, @"DepthHaze is enabled but the host did not supply a depth texture.");
-            return nil;
-        }
-        vector_float3 fogColor = (vector_float3){0.56f, 0.67f, 0.82f};
-        current = [self applyDepthHazeToColorTexture:current
-                                       depthTexture:depthTexture
-                                      depthEncoding:frameInfo.depthEncoding
-                                          nearPlane:frameInfo.nearPlane
-                                           fogStart:MIN(MAX([preset[@"DEPTHHAZE_START"] floatValue] ?: 0.55f, 0.0f), 1.0f)
-                                          fogFactor:MIN(MAX([preset[@"DEPTHHAZE_FACTOR"] floatValue] ?: 0.35f, 0.001f), 1.0f)
-                                           fogColor:fogColor
-                                             device:device
-                                       commandQueue:commandQueue
-                                              error:error];
-        if (!current) return nil;
-    }
-
-    if (adofEnabled) {
-        if (!depthTexture) {
-            HexiumShadeAssignError(error, 82, @"ADOF is enabled but the host did not supply a depth texture.");
-            return nil;
-        }
-        current = [self applyADOFToColorTexture:current
-                                    depthTexture:depthTexture
-                                   depthEncoding:frameInfo.depthEncoding
-                                       nearPlane:frameInfo.nearPlane
-                                        farPlane:frameInfo.farPlane
-                                   focusDistance:MIN(MAX([preset[@"ADOF_FOCUS"] floatValue] ?: 0.5f, 0.0f), 1.0f)
-                                      focusRange:MIN(MAX([preset[@"ADOF_RANGE"] floatValue] ?: 0.12f, 0.0f), 0.99f)
-                                      blurRadius:MIN(MAX([preset[@"ADOF_RADIUS"] floatValue] ?: 6.0f, 0.0f), 12.0f)
-                                           device:device
-                                     commandQueue:commandQueue
-                                            error:error];
-        if (!current) return nil;
-    }
-
-    if (ssrEnabled) {
+    if ([states[@"SSR"] boolValue]) {
         HexiumShadeAssignError(error, 83, @"SSR is selected in the preset, but no Metal SSR kernel is implemented yet.");
         return nil;
     }
+    if (mxaoEnabled && (!depthTexture || !normalTexture)) {
+        HexiumShadeAssignError(error, 80, @"MXAO is enabled but the host did not supply both depth and normal textures.");
+        return nil;
+    }
+    if ((hazeEnabled || adofEnabled) && !depthTexture) {
+        HexiumShadeAssignError(error, 81, @"DepthHaze or ADOF is enabled but the host did not supply a depth texture.");
+        return nil;
+    }
 
+    id<MTLComputePipelineState> colorPipeline = HexiumShadePipelineForDevice(device, error);
+    id<MTLComputePipelineState> mxaoPipeline = mxaoEnabled ? HexiumShadeMXAOPipelineForDevice(device, error) : nil;
+    id<MTLComputePipelineState> hazePipeline = hazeEnabled ? HexiumShadeDepthHazePipelineForDevice(device, error) : nil;
+    id<MTLComputePipelineState> adofPipeline = adofEnabled ? HexiumShadeADOFPipelineForDevice(device, error) : nil;
+    if (!colorPipeline || (mxaoEnabled && !mxaoPipeline) ||
+        (hazeEnabled && !hazePipeline) || (adofEnabled && !adofPipeline)) return nil;
+
+    id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+    if (!commandBuffer) {
+        HexiumShadeAssignError(error, 85, @"Could not create the Metal command buffer for the effect graph.");
+        return nil;
+    }
+
+    NSMutableArray<id<MTLTexture>> *outputs = [NSMutableArray arrayWithCapacity:4];
+    id<MTLTexture> current = colorTexture;
+    NSDictionary *quality = self.qualitySettings;
+    vector_float4 colorControls = {
+        [quality[@"brightness"] floatValue],
+        [quality[@"contrast"] floatValue],
+        [quality[@"saturation"] floatValue],
+        0.0f
+    };
+    id<MTLTexture> colorOutput = [self newIntermediateTextureWithWidth:colorTexture.width
+                                                               height:colorTexture.height
+                                                          pixelFormat:colorTexture.pixelFormat
+                                                               device:device
+                                                                error:error];
+    if (!colorOutput) return nil;
+    [outputs addObject:colorOutput];
+    if (!HexiumShadeEncodePass(commandBuffer, colorPipeline, @[current, colorOutput],
+                               &colorControls, sizeof(colorControls), error)) return nil;
+    current = colorOutput;
+
+    if (mxaoEnabled) {
+        id<MTLTexture> output = [self newIntermediateTextureWithWidth:colorTexture.width
+                                                               height:colorTexture.height
+                                                          pixelFormat:colorTexture.pixelFormat
+                                                               device:device
+                                                                error:error];
+        if (!output) return nil;
+        [outputs addObject:output];
+        HSMXAOControls controls = {
+            .parameters = {
+                MIN(MAX([preset[@"MXAO_RADIUS"] floatValue] ?: 6.0f, 1.0f), 32.0f),
+                MIN(MAX([preset[@"MXAO_INTENSITY"] floatValue] ?: 1.15f, 0.0f), 8.0f),
+                MIN(MAX([preset[@"MXAO_BIAS"] floatValue] ?: 0.025f, 0.0f), 1.0f),
+                (float)frameInfo.depthEncoding
+            },
+            .camera = { frameInfo.nearPlane, frameInfo.farPlane, (float)frameInfo.normalEncoding, 0.0f }
+        };
+        if (!HexiumShadeEncodePass(commandBuffer, mxaoPipeline,
+                                   @[current, depthTexture, normalTexture, output],
+                                   &controls, sizeof(controls), error)) return nil;
+        current = output;
+    }
+
+    if (hazeEnabled) {
+        id<MTLTexture> output = [self newIntermediateTextureWithWidth:colorTexture.width
+                                                               height:colorTexture.height
+                                                          pixelFormat:colorTexture.pixelFormat
+                                                               device:device
+                                                                error:error];
+        if (!output) return nil;
+        [outputs addObject:output];
+        HSDepthHazeControls controls = {
+            .fogColorStart = {0.56f, 0.67f, 0.82f,
+                MIN(MAX([preset[@"DEPTHHAZE_START"] floatValue] ?: 0.55f, 0.0f), 1.0f)},
+            .depthControls = {
+                MIN(MAX([preset[@"DEPTHHAZE_FACTOR"] floatValue] ?: 0.35f, 0.001f), 1.0f),
+                frameInfo.nearPlane, frameInfo.farPlane, (float)frameInfo.depthEncoding
+            }
+        };
+        if (!HexiumShadeEncodePass(commandBuffer, hazePipeline, @[current, depthTexture, output],
+                                   &controls, sizeof(controls), error)) return nil;
+        current = output;
+    }
+
+    if (adofEnabled) {
+        id<MTLTexture> output = [self newIntermediateTextureWithWidth:colorTexture.width
+                                                               height:colorTexture.height
+                                                          pixelFormat:colorTexture.pixelFormat
+                                                               device:device
+                                                                error:error];
+        if (!output) return nil;
+        [outputs addObject:output];
+        HSADOFControls controls = {
+            .focus = {
+                MIN(MAX([preset[@"ADOF_FOCUS"] floatValue] ?: 0.5f, 0.0f), 1.0f),
+                MIN(MAX([preset[@"ADOF_RANGE"] floatValue] ?: 0.12f, 0.0f), 0.99f),
+                MIN(MAX([preset[@"ADOF_RADIUS"] floatValue] ?: 6.0f, 0.0f), 12.0f),
+                (float)frameInfo.depthEncoding
+            },
+            .camera = {frameInfo.nearPlane, frameInfo.farPlane, 0.0f, 0.0f}
+        };
+        if (!HexiumShadeEncodePass(commandBuffer, adofPipeline, @[current, depthTexture, output],
+                                   &controls, sizeof(controls), error)) return nil;
+        current = output;
+    }
+
+    [commandBuffer commit];
+    [commandBuffer waitUntilCompleted];
+    if (commandBuffer.status == MTLCommandBufferStatusError) {
+        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain
+                                                                        code:86
+                                                                    userInfo:@{NSLocalizedDescriptionKey: @"The SHADES Metal effect graph failed."}];
+        return nil;
+    }
     return current;
 }
-
 
 + (id<MTLTexture>)applyMXAOToColorTexture:(id<MTLTexture>)colorTexture
                              depthTexture:(id<MTLTexture>)depthTexture
@@ -437,8 +524,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
         HexiumShadeAssignError(error, 44, @"MXAO camera metadata and controls are outside their valid ranges.");
         return nil;
     }
-    id<MTLComputePipelineState> pipeline = HexiumShadeMXAOPipelineForDevice(device, error);
-    if (!pipeline) return nil;
+    id<MTLComputePipelineState> pipeline = HexiumShadeMXAOPipelineForDevice(device, error);    if (!pipeline) return nil;
     MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:colorTexture.pixelFormat
                                                                                          width:colorTexture.width
                                                                                         height:colorTexture.height
@@ -698,64 +784,3 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
         case MTLPixelFormatBGRA8Unorm:
         case MTLPixelFormatRGBA16Float:
             break;
-        default:
-            HexiumShadeAssignError(error, 8, @"Unsupported pixel format. Use RGBA8Unorm, BGRA8Unorm, or RGBA16Float.");
-            return nil;
-    }
-
-    id<MTLComputePipelineState> pipeline = HexiumShadePipelineForDevice(device, error);
-    if (!pipeline) return nil;
-
-    MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:input.pixelFormat
-                                                                                         width:input.width
-                                                                                        height:input.height
-                                                                                     mipmapped:NO];
-    descriptor.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
-    descriptor.storageMode = MTLStorageModePrivate;
-    id<MTLTexture> output = [device newTextureWithDescriptor:descriptor];
-    if (!output) {
-        HexiumShadeAssignError(error, 9, @"Could not allocate the output texture for this pixel format and device.");
-        return nil;
-    }
-
-    NSDictionary *settings = self.qualitySettings;
-    vector_float4 controls = {
-        [(NSNumber *)(settings[@"brightness"] ?: @0.0) floatValue],
-        [(NSNumber *)(settings[@"contrast"] ?: @1.0) floatValue],
-        [(NSNumber *)(settings[@"saturation"] ?: @1.0) floatValue],
-        0.0f
-    };
-
-    id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
-    if (!commandBuffer) {
-        HexiumShadeAssignError(error, 10, @"Could not create a Metal command buffer.");
-        return nil;
-    }
-    id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
-    if (!encoder) {
-        HexiumShadeAssignError(error, 11, @"Could not create a Metal compute encoder.");
-        return nil;
-    }
-
-    [encoder setComputePipelineState:pipeline];
-    [encoder setTexture:input atIndex:0];
-    [encoder setTexture:output atIndex:1];
-    [encoder setBytes:&controls length:sizeof(controls) atIndex:0];
-
-    NSUInteger width = pipeline.threadExecutionWidth;
-    NSUInteger height = MAX(1, pipeline.maxTotalThreadsPerThreadgroup / width);
-    [encoder dispatchThreads:MTLSizeMake(input.width, input.height, 1)
-       threadsPerThreadgroup:MTLSizeMake(width, height, 1)];
-    [encoder endEncoding];
-
-    [commandBuffer commit];
-    [commandBuffer waitUntilCompleted];
-    if (commandBuffer.status == MTLCommandBufferStatusError) {
-        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain
-                                                                          code:12
-                                                                      userInfo:@{NSLocalizedDescriptionKey: @"Metal texture processing failed."}];
-        return nil;
-    }
-    return output;
-}
-@end
