@@ -13,10 +13,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Check Xcode
         run: xcodebuild -version
+
       - name: List project targets and schemes
         run: xcodebuild -list -project HexiumShade.xcodeproj
+
+      - name: Build renderer dylib
+        run: |
+          xcodebuild \
+            -project HexiumShade.xcodeproj \
+            -scheme HexiumShade \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 \
+            build
+
+      - name: Package renderer dylib
+        run: |
+          mkdir -p output/renderer
+          DYLIB_PATH="$(find build/DerivedData/Build/Products -type f -name 'libHexiumShade.dylib' -print -quit)"
+          test -n "$DYLIB_PATH"
+          file "$DYLIB_PATH"
+          cp "$DYLIB_PATH" output/renderer/SHADES.dylib
+          test -s output/renderer/SHADES.dylib
+          xcrun lipo -verify_arch arm64 output/renderer/SHADES.dylib
+
       - name: Build SHADES app
         run: |
           xcodebuild \
@@ -28,15 +53,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             ARCHS=arm64 \
             build
+
       - name: Package app
         run: |
-          mkdir -p output
-          APP_PATH="$(find build/DerivedData -type d -name 'SHADESApp.app' -print -quit)"
+          mkdir -p output/app
+          APP_PATH="$(find build/DerivedData/Build/Products -type d -name 'SHADESApp.app' -print -quit)"
           test -n "$APP_PATH"
-          cp -R "$APP_PATH" output/SHADES.app
-          test -s output/SHADES.app/SHADESApp
-      - name: Upload artifact
+          cp -R "$APP_PATH" output/app/SHADES.app
+          test -s output/app/SHADES.app/SHADESApp
+
+      - name: Upload renderer dylib
         uses: actions/upload-artifact@v4
         with:
-          name: SHADES-iOS-arm64
-          path: output/SHADES.app
+          name: SHADES-Dylib-iOS-arm64
+          path: output/renderer/SHADES.dylib
+
+      - name: Upload SHADES app
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHADES-App-iOS-arm64
+          path: output/app/SHADES.app
