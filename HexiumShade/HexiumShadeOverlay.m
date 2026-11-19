@@ -3,7 +3,7 @@
 #import <objc/runtime.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
-@interface HexiumShadeOverlay () <UIDocumentPickerDelegate>
+@interface HexiumShadeOverlay () <UIDocumentPickerDelegate, UITextFieldDelegate>
 @property (nonatomic, strong) UIView *panel;
 @property (nonatomic, strong) UIButton *cube;
 @property (nonatomic, strong) UIScrollView *scroll;
@@ -157,7 +157,7 @@
     self.panel.layer.shadowOpacity = 0.28;
     self.panel.layer.shadowRadius = 16;
     self.panel.layer.shadowOffset = CGSizeMake(0, 5);
-    self.panel.clipsToBounds = YES;
+    // Keep the panel's shadow visible; the scroll view and file card clip their own contents.\n    self.panel.clipsToBounds = NO;
     [window addSubview:self.panel];
     [self buildHeaderWithWidth:width];
     [self buildButtonsWithWidth:width];
@@ -294,7 +294,7 @@
 }
 
 - (void)buildScrollViewWithWidth:(CGFloat)width height:(CGFloat)height {
-    self.scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(7, 381, width - 14, height - 389)];
+    CGFloat scrollTop = MIN(381.0, MAX(250.0, height - 76.0));\n    CGFloat scrollHeight = MAX(44.0, height - scrollTop - 8.0);\n    self.scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(7, scrollTop, width - 14, scrollHeight)];
     self.scroll.backgroundColor = [UIColor colorWithWhite:0 alpha:0.12];
     self.scroll.layer.cornerRadius = 8;
     self.scroll.alwaysBounceVertical = YES;
@@ -456,7 +456,7 @@
         name.font = [UIFont systemFontOfSize:9 weight:UIFontWeightMedium];
         [self.scroll addSubview:name];
         UITextField *field = [[UITextField alloc] initWithFrame:CGRectMake(width * 0.50, y, width * 0.46, 27)];
-        field.text = value;
+        field.text = value;\n        field.delegate = self;\n        field.returnKeyType = UIReturnKeyDone;\n        field.autocorrectionType = UITextAutocorrectionTypeNo;\n        field.autocapitalizationType = UITextAutocapitalizationTypeNone;
         field.textColor = UIColor.whiteColor;
         field.font = [UIFont systemFontOfSize:9];
         field.backgroundColor = [UIColor colorWithWhite:0.03 alpha:1];
@@ -472,7 +472,7 @@
     self.scroll.contentSize = CGSizeMake(width, MAX(y + 8, self.scroll.bounds.size.height + 1));
 }
 
-- (NSString *)updatedINI {
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {\n    [textField resignFirstResponder];\n    return YES;\n}\n\n- (NSString *)updatedINI {
     NSMutableArray *output = [self.iniLines mutableCopy] ?: [NSMutableArray array];
     for (UIView *view in self.scroll.subviews) {
         if (![view isKindOfClass:UITextField.class]) continue;
