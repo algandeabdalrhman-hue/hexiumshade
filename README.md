@@ -37,7 +37,7 @@ Public APIs are declared in `HexiumShade/HexiumShade.h`. The library exposes:
 - Depth of field through `applyADOFToColorTexture:depthTexture:...`.
 - Validation helpers for frame textures and camera metadata.
 
-The host is responsible for supplying valid Metal textures, encoding conventions, near/far planes, and command queues. Returned textures are separate outputs; callers retain ownership of their inputs.
+The host is responsible for supplying valid Metal textures, encoding conventions, near/far planes, and command queues. The current pipeline obtains shader functions from the host's default Metal library via `newDefaultLibrary`; therefore the host must compile `HexiumShade.metal` into its app target (or otherwise make the matching functions available in that default library). The standalone dylib artifact contains only `SHADES.dylib`, not a separate `default.metallib`. Returned textures are separate outputs; callers retain ownership of their inputs.
 
 ## Current UI / renderer status
 
