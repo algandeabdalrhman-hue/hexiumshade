@@ -475,4 +475,11 @@
     NSLog(@"SHADES: %@ profile and effect switches saved. Render passes require a host-supplied frame.", self.selectedQuality);
 }
 
+
+// Public entry point for hosts that explicitly integrate SHADES.
+__attribute__((visibility("default")))
+void SHADESPresentOverlay(void) {
+    [HexiumShadeOverlay showOverlay];
+}
+
 @end
