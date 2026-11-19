@@ -120,9 +120,19 @@
             [existing.panel removeFromSuperview];
             [window addSubview:existing.panel];
         }
-        existing.panel.hidden = NO;
-        [window bringSubviewToFront:existing.panel];
-        if (existing.cube) [window bringSubviewToFront:existing.cube];
+        // Preserve the user's minimized state when UIKit reports a key-window
+        // or scene transition. The floating restore control remains visible.
+        BOOL isMinimized = (existing.cube != nil);
+        existing.panel.hidden = isMinimized;
+        if (existing.cube && existing.cube.superview != window) {
+            [existing.cube removeFromSuperview];
+            [window addSubview:existing.cube];
+        }
+        if (!isMinimized) {
+            [window bringSubviewToFront:existing.panel];
+        } else {
+            [window bringSubviewToFront:existing.cube];
+        }
         return;
     }
 
