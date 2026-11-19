@@ -44,9 +44,13 @@ static void SHComputeDispatcherSetError(NSError **error, NSInteger code, NSStrin
     if (!pipeline) return nil;
 
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
+    if (!commandBuffer) {
+        SHComputeDispatcherSetError(error, 2, @"Could not create a Metal command buffer.");
+        return nil;
+    }
     id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
-    if (!commandBuffer || !encoder) {
-        SHComputeDispatcherSetError(error, 2, @"Could not create a command buffer or compute encoder.");
+    if (!encoder) {
+        SHComputeDispatcherSetError(error, 3, @"Could not create a Metal compute encoder.");
         return nil;
     }
 
@@ -56,18 +60,23 @@ static void SHComputeDispatcherSetError(NSError **error, NSInteger code, NSStrin
         return nil;
     }
 
+    // Pick a legal group shape that follows the logical grid dimensions and
+    // never exceeds the pipeline's maximum total threads per group.
     NSUInteger maxThreads = MAX((NSUInteger)1, pipeline.maxTotalThreadsPerThreadgroup);
-    NSUInteger threadWidth = MAX((NSUInteger)1, pipeline.threadExecutionWidth);
-    NSUInteger tx = MIN(threadWidth, maxThreads);
-    NSUInteger remaining = MAX((NSUInteger)1, maxThreads / tx);
-    NSUInteger ty = MIN((NSUInteger)4, remaining);
-    NSUInteger tz = MAX((NSUInteger)1, remaining / ty);
-    MTLSize threadsPerGroup = MTLSizeMake(tx, ty, tz);
+    NSUInteger executionWidth = MAX((NSUInteger)1, pipeline.threadExecutionWidth);
+    NSUInteger tx = MIN(gridSize.width, MIN(executionWidth, maxThreads));
+    NSUInteger remainingAfterX = MAX((NSUInteger)1, maxThreads / tx);
+    NSUInteger ty = MIN(gridSize.height, remainingAfterX);
+    NSUInteger remainingAfterY = MAX((NSUInteger)1, remainingAfterX / ty);
+    NSUInteger tz = MIN(gridSize.depth, remainingAfterY);
+    MTLSize threadsPerGroup = MTLSizeMake(MAX((NSUInteger)1, tx),
+                                          MAX((NSUInteger)1, ty),
+                                          MAX((NSUInteger)1, tz));
 
     MTLSize threadgroups = MTLSizeMake(
-        (gridSize.width / tx) + ((gridSize.width % tx) != 0),
-        (gridSize.height / ty) + ((gridSize.height % ty) != 0),
-        (gridSize.depth / tz) + ((gridSize.depth % tz) != 0)
+        (gridSize.width / threadsPerGroup.width) + ((gridSize.width % threadsPerGroup.width) != 0),
+        (gridSize.height / threadsPerGroup.height) + ((gridSize.height % threadsPerGroup.height) != 0),
+        (gridSize.depth / threadsPerGroup.depth) + ((gridSize.depth % threadsPerGroup.depth) != 0)
     );
 
     [encoder dispatchThreadgroups:threadgroups threadsPerThreadgroup:threadsPerGroup];
