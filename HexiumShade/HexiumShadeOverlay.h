@@ -4,4 +4,6 @@
 
 + (void)showOverlay;
 
+FOUNDATION_EXPORT void SHADESPresentOverlay(void);
+
 @end
