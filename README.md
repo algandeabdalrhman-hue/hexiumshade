@@ -71,6 +71,43 @@ if (!processed) {
 
 Call this from the host renderer with textures created for the same Metal device. The returned texture is the final color result; the host renderer remains responsible for presenting it in its own render path.
 
+## Reusable compute context
+
+The project includes a small Objective-C compute layer corresponding to the clean-room Metal helper design:
+
+- `SHKernelCache` caches one compute pipeline per function/library/device.
+- `SHBindingTable` maintains 16 buffer slots and 16 texture slots, including inline byte bindings.
+- `SHComputeDispatcher` computes ceil-divided threadgroup counts and chooses a grid-aware default threadgroup shape.
+- `SHComputeContext` owns the Metal device, command queue, pipeline cache, and binding table, and exposes a compact bind/dispatch API.
+
+Example (inside an app-owned Metal renderer):
+
+```objc
+#import "SHComputeContext.h"
+
+NSError *computeError = nil;
+SHComputeContext *context = [[SHComputeContext alloc] initWithDevice:device error:&computeError];
+if (!context) {
+    NSLog(@"Compute context error: %@", computeError);
+    return;
+}
+
+[context setTexture:sourceTexture atIndex:0 error:&computeError];
+[context setTexture:destinationTexture atIndex:1 error:&computeError];
+
+id<MTLCommandBuffer> work = [context dispatchFunctionNamed:@"your_kernel"
+                                                    library:library
+                                                   gridSize:MTLSizeMake(width, height, 1)
+                                                      error:&computeError];
+if (!work) {
+    NSLog(@"Compute dispatch error: %@", computeError);
+    return;
+}
+// Dispatch is asynchronous; attach a completion handler or wait when appropriate.
+```
+
+Bindings are replayed onto every newly created compute encoder. Metal bindings are encoder-local, so dirty tracking must not skip unchanged resources between separate dispatches. The context supports explicit buffer, inline-byte, and texture bindings. The returned command buffer is committed but not synchronously waited on.
+
 ## Metal effect graph status
 
 The frame-processing API now executes an ordered chain: color grading, optional MXAO, optional depth haze, then optional ADOF. The chain reads the effect switches saved by the UIKit panel. The metadata-aware overload accepts `HSFrameInfo` so the host can specify depth encoding, normal encoding, and camera near/far planes. The compatibility overload uses conventional Metal device-Z depth with near=0.1 and far=1000; hosts with different depth conventions should use the metadata-aware overload.
