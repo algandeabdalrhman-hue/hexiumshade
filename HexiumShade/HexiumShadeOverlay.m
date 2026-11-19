@@ -149,7 +149,7 @@
 
 - (void)buildInterfaceInWindow:(UIWindow *)window {
     self.iniLines = [NSMutableArray array];
-    self.effects = [@{@"MXAO": @NO, @"DepthHaze": @NO, @"ADOF": @NO, @"SSR": @NO} mutableCopy];
+    self.effects = [[NSUserDefaults.standardUserDefaults dictionaryForKey:@"HexiumShade.effectStates"] mutableCopy] ?: [@{@"MXAO": @NO, @"DepthHaze": @NO, @"ADOF": @NO, @"SSR": @NO} mutableCopy];
     self.effectSwitches = [NSMutableDictionary dictionary];
     self.selectedQuality = HexiumShade.qualityPreset ?: @"High";
     self.importedFileName = @"No preset imported";
@@ -237,8 +237,7 @@
                                    frame:CGRectMake(9 + i * (presetWidth + presetGap), 108, presetWidth, 28)
                                   action:NSSelectorFromString(actions[i])];
         if ([titles[i] isEqualToString:self.selectedQuality]) preset.backgroundColor = [self blue:0.08 green:0.48 blue:0.32 alpha:1];
-        [self.panel addSubview:preset];
-    }
+        [self.panel addSubview:preset];    }
 }
 
 - (void)buildFileInfoWithWidth:(CGFloat)width {
@@ -267,7 +266,7 @@
     heading.textColor = [self blue:0.55 green:0.75 blue:1 alpha:1];
     [self.panel addSubview:heading];
     NSArray *names = @[@"MXAO", @"DepthHaze", @"ADOF", @"SSR"];
-    NSArray *descriptions = @[@"Ambient occlusion", @"Depth-based haze", @"Adaptive depth of field", @"Screen-space reflections"];
+    NSArray *descriptions = @[@"Ambient occlusion", @"Depth-based haze", @"Adaptive depth of field", @"Not implemented in Metal yet"];
     for (NSUInteger i = 0; i < names.count; i++) {
         CGFloat rowY = 216 + i * 35;
         UILabel *name = [self label:names[i] frame:CGRectMake(12, rowY, 112, 18)];
@@ -279,6 +278,11 @@
         [self.panel addSubview:detail];
         UISwitch *toggle = [[UISwitch alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
         toggle.on = [self.effects[names[i]] boolValue];
+        if ([names[i] isEqualToString:@"SSR"]) {
+            toggle.enabled = NO;
+            toggle.on = NO;
+            self.effects[@"SSR"] = @NO;
+        }
         toggle.onTintColor = [self blue:0.08 green:0.48 blue:0.92 alpha:1];
         toggle.accessibilityIdentifier = names[i];
         [toggle addTarget:self action:@selector(effectSwitchChanged:) forControlEvents:UIControlEventValueChanged];
@@ -477,8 +481,7 @@
         field.textColor = UIColor.whiteColor;
         field.font = [UIFont systemFontOfSize:9];
         field.backgroundColor = [UIColor colorWithWhite:0.03 alpha:1];
-        field.layer.cornerRadius = 5;
-        field.layer.borderWidth = 1;
+        field.layer.cornerRadius = 5;        field.layer.borderWidth = 1;
         field.layer.borderColor = [UIColor colorWithWhite:0.25 alpha:1].CGColor;
         field.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 5, 0)];
         field.leftViewMode = UITextFieldViewModeAlways;
