@@ -42,7 +42,7 @@ typedef struct {
 + (BOOL)validateFrameInfo:(HSFrameInfo)frameInfo error:(NSError * _Nullable * _Nullable)error;
 
 /// Allocates a private intermediate texture with shader read/write access.
-+ (nullable id<MTLTexture>)newIntermediateTextureWithWidth:(NSUInteger)width
++ (nullable id<MTLTexture>)createIntermediateTextureWithWidth:(NSUInteger)width
                                                     height:(NSUInteger)height
                                                pixelFormat:(MTLPixelFormat)pixelFormat
                                                     device:(id<MTLDevice>)device
