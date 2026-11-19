@@ -45,7 +45,7 @@ The frame-processing API now executes an ordered chain: color grading, optional 
 
 MXAO requires both depth and normal textures. Depth haze and ADOF require depth. Missing required inputs return a descriptive error instead of silently pretending an effect ran. SSR remains disabled in the UI because a Metal SSR kernel has not been implemented. Motion vectors are validated for the host frame contract but are not consumed by the current effects.
 
-The first effect-graph implementation prioritizes correctness and clear resource ownership: each pass produces a separate texture and is completed before the next pass. A later optimization can encode all passes into one command buffer and reuse a texture pool. The host must still call the frame-processing API from its own supported render loop; the UIKit switches do not independently acquire frames.
+The effect graph allocates a distinct output texture per enabled pass and encodes the entire ordered chain into one Metal command buffer, followed by one completion wait. This avoids a CPU/GPU synchronization after every effect. Texture-pool reuse and a non-blocking completion-handler API remain performance improvements for a later iteration. The host must still call the frame-processing API from its own supported render loop; the UIKit switches do not independently acquire frames.
 
 ## Build
 
