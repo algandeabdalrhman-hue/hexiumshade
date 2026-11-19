@@ -476,10 +476,12 @@
 }
 
 
+
+
+@end
+
 // Public entry point for hosts that explicitly integrate SHADES.
 __attribute__((visibility("default")))
 void SHADESPresentOverlay(void) {
     [HexiumShadeOverlay showOverlay];
 }
-
-@end
