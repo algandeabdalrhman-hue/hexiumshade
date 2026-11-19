@@ -39,6 +39,38 @@ Public APIs are declared in `HexiumShade/HexiumShade.h`. The library exposes:
 
 The host is responsible for supplying valid Metal textures, encoding conventions, near/far planes, and command queues. The current pipeline obtains shader functions from the host's default Metal library via `newDefaultLibrary`; therefore the host must compile `HexiumShade.metal` into its app target (or otherwise make the matching functions available in that default library). The standalone dylib artifact contains only `SHADES.dylib`, not a separate `default.metallib`. Returned textures are separate outputs; callers retain ownership of their inputs.
 
+### Host frame example
+
+```objc
+HSFrameInfo frameInfo = {
+    .projectionMatrix = projectionMatrix,
+    .inverseProjectionMatrix = inverseProjectionMatrix,
+    .viewMatrix = viewMatrix,
+    .nearPlane = cameraNear,
+    .farPlane = cameraFar,
+    .deltaTime = frameDelta,
+    .depthEncoding = HSDepthEncodingDeviceZ,
+    .normalEncoding = HSNormalEncodingViewSpace
+};
+
+NSError *renderError = nil;
+id<MTLTexture> processed = [HexiumShade
+    processFrameColorTexture:colorTexture
+    depthTexture:depthTexture
+    normalTexture:normalTexture
+    motionVectorTexture:nil
+    frameInfo:frameInfo
+    device:metalDevice
+    commandQueue:commandQueue
+    error:&renderError];
+
+if (!processed) {
+    NSLog(@"SHADES frame failed: %@", renderError);
+}
+```
+
+Call this from the host renderer with textures created for the same Metal device. The returned texture is the final color result; the host renderer remains responsible for presenting it in its own render path.
+
 ## Metal effect graph status
 
 The frame-processing API now executes an ordered chain: color grading, optional MXAO, optional depth haze, then optional ADOF. The chain reads the effect switches saved by the UIKit panel. The metadata-aware overload accepts `HSFrameInfo` so the host can specify depth encoding, normal encoding, and camera near/far planes. The compatibility overload uses conventional Metal device-Z depth with near=0.1 and far=1000; hosts with different depth conventions should use the metadata-aware overload.
