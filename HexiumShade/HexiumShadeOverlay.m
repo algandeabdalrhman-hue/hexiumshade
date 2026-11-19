@@ -21,11 +21,52 @@
 
 + (void)showOverlay {
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
-        if (!window) return;
+        UIApplication *application = UIApplication.sharedApplication;
+        UIWindow *window = nil;
+
+        // Prefer the active scene's key window. On iOS 13+, the legacy
+        // application.windows array may be empty or may point at another scene.
+        for (UIScene *scene in application.connectedScenes) {
+            if (scene.activationState != UISceneActivationStateForegroundActive) continue;
+            if (![scene isKindOfClass:UIWindowScene.class]) continue;
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            for (UIWindow *candidate in windowScene.windows) {
+                if (candidate.isKeyWindow) {
+                    window = candidate;
+                    break;
+                }
+            }
+            if (window) break;
+            if (!window) window = windowScene.windows.firstObject;
+        }
+
+        // Compatibility fallback for apps that do not use scene-based windows.
+        if (!window) {
+            for (UIWindow *candidate in application.windows) {
+                if (candidate.isKeyWindow) {
+                    window = candidate;
+                    break;
+                }
+            }
+        }
+        if (!window) window = application.windows.firstObject;
+        if (!window || !window.rootViewController) {
+            NSLog(@"SHADES: no active host window found; overlay was not presented.");
+            return;
+        }
+
+        HexiumShadeOverlay *existing = objc_getAssociatedObject(window, "HexiumShadeOverlay");
+        if (existing) {
+            [window bringSubviewToFront:existing.panel];
+            existing.panel.hidden = NO;
+            return;
+        }
+
         HexiumShadeOverlay *overlay = [HexiumShadeOverlay new];
         objc_setAssociatedObject(window, "HexiumShadeOverlay", overlay, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         [overlay buildInterfaceInWindow:window];
+        [window bringSubviewToFront:overlay.panel];
+        NSLog(@"SHADES: overlay attached to active window (%@).", NSStringFromCGRect(window.bounds));
     });
 }
 
