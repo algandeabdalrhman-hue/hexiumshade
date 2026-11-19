@@ -39,9 +39,13 @@ Public APIs are declared in `HexiumShade/HexiumShade.h`. The library exposes:
 
 The host is responsible for supplying valid Metal textures, encoding conventions, near/far planes, and command queues. The current pipeline obtains shader functions from the host's default Metal library via `newDefaultLibrary`; therefore the host must compile `HexiumShade.metal` into its app target (or otherwise make the matching functions available in that default library). The standalone dylib artifact contains only `SHADES.dylib`, not a separate `default.metallib`. Returned textures are separate outputs; callers retain ownership of their inputs.
 
-## Current UI / renderer status
+## Metal effect graph status
 
-The UIKit panel supports preset import/export, quality selection, effect switches, and editable INI values. At this stage, the switches and Apply action persist/configure UI preset state; they do **not** automatically insert MXAO, DepthHaze, ADOF, or SSR into a host's render loop. A host integration must call the corresponding Metal processing APIs with its own frame textures. SSR is currently a UI/configuration option only; no SSR Metal pass is exposed yet.
+The frame-processing API now executes an ordered chain: color grading, optional MXAO, optional depth haze, then optional ADOF. The chain reads the effect switches saved by the UIKit panel. The metadata-aware overload accepts `HSFrameInfo` so the host can specify depth encoding, normal encoding, and camera near/far planes. The compatibility overload uses conventional Metal device-Z depth with near=0.1 and far=1000; hosts with different depth conventions should use the metadata-aware overload.
+
+MXAO requires both depth and normal textures. Depth haze and ADOF require depth. Missing required inputs return a descriptive error instead of silently pretending an effect ran. SSR remains disabled in the UI because a Metal SSR kernel has not been implemented. Motion vectors are validated for the host frame contract but are not consumed by the current effects.
+
+The first effect-graph implementation prioritizes correctness and clear resource ownership: each pass produces a separate texture and is completed before the next pass. A later optimization can encode all passes into one command buffer and reuse a texture pool. The host must still call the frame-processing API from its own supported render loop; the UIKit switches do not independently acquire frames.
 
 ## Build
 
