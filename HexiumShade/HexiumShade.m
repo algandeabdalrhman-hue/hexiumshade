@@ -257,8 +257,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
                     normalTexture:(id<MTLTexture>)normalTexture
               motionVectorTexture:(id<MTLTexture>)motionVectorTexture
                            device:(id<MTLDevice>)device
-                            error:(NSError **)error {
-    if (!colorTexture || !device) {
+                            error:(NSError **)error {    if (!colorTexture || !device) {
         HexiumShadeAssignError(error, 20, @"A color texture and Metal device are required.");
         return NO;
     }
@@ -517,8 +516,7 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
         return nil;
     }
     if (depthEncoding < HSDepthEncodingDeviceZ || depthEncoding > HSDepthEncodingLinearViewDistance ||
-        normalEncoding < HSNormalEncodingWorldSpace || normalEncoding > HSNormalEncodingEncoded01 ||
-        !isfinite(nearPlane) || !isfinite(farPlane) || nearPlane <= 0.0f || farPlane <= nearPlane ||
+        normalEncoding < HSNormalEncodingWorldSpace || normalEncoding > HSNormalEncodingEncoded01 ||        !isfinite(nearPlane) || !isfinite(farPlane) || nearPlane <= 0.0f || farPlane <= nearPlane ||
         !isfinite(radius) || radius <= 0.0f || !isfinite(intensity) || intensity < 0.0f ||
         !isfinite(normalBias) || normalBias < 0.0f) {
         HexiumShadeAssignError(error, 44, @"MXAO camera metadata and controls are outside their valid ranges.");
@@ -784,3 +782,64 @@ static id<MTLComputePipelineState> HexiumShadeADOFPipelineForDevice(id<MTLDevice
         case MTLPixelFormatBGRA8Unorm:
         case MTLPixelFormatRGBA16Float:
             break;
+        default:
+            HexiumShadeAssignError(error, 8, @"Unsupported pixel format. Use RGBA8Unorm, BGRA8Unorm, or RGBA16Float.");
+            return nil;
+    }
+
+    id<MTLComputePipelineState> pipeline = HexiumShadePipelineForDevice(device, error);
+    if (!pipeline) return nil;
+
+    MTLTextureDescriptor *descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:input.pixelFormat
+                                                                                         width:input.width
+                                                                                        height:input.height
+                                                                                     mipmapped:NO];
+    descriptor.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+    descriptor.storageMode = MTLStorageModePrivate;
+    id<MTLTexture> output = [device newTextureWithDescriptor:descriptor];
+    if (!output) {
+        HexiumShadeAssignError(error, 9, @"Could not allocate the output texture for this pixel format and device.");
+        return nil;
+    }
+
+    NSDictionary *settings = self.qualitySettings;
+    vector_float4 controls = {
+        [(NSNumber *)(settings[@"brightness"] ?: @0.0) floatValue],
+        [(NSNumber *)(settings[@"contrast"] ?: @1.0) floatValue],
+        [(NSNumber *)(settings[@"saturation"] ?: @1.0) floatValue],
+        0.0f
+    };
+
+    id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+    if (!commandBuffer) {
+        HexiumShadeAssignError(error, 10, @"Could not create a Metal command buffer.");
+        return nil;
+    }
+    id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+    if (!encoder) {
+        HexiumShadeAssignError(error, 11, @"Could not create a Metal compute encoder.");
+        return nil;
+    }
+
+    [encoder setComputePipelineState:pipeline];
+    [encoder setTexture:input atIndex:0];
+    [encoder setTexture:output atIndex:1];
+    [encoder setBytes:&controls length:sizeof(controls) atIndex:0];
+
+    NSUInteger width = pipeline.threadExecutionWidth;
+    NSUInteger height = MAX(1, pipeline.maxTotalThreadsPerThreadgroup / width);
+    [encoder dispatchThreads:MTLSizeMake(input.width, input.height, 1)
+       threadsPerThreadgroup:MTLSizeMake(width, height, 1)];
+    [encoder endEncoding];
+
+    [commandBuffer commit];
+    [commandBuffer waitUntilCompleted];
+    if (commandBuffer.status == MTLCommandBufferStatusError) {
+        if (error) *error = commandBuffer.error ?: [NSError errorWithDomain:HexiumShadeErrorDomain
+                                                                          code:12
+                                                                      userInfo:@{NSLocalizedDescriptionKey: @"Metal texture processing failed."}];
+        return nil;
+    }
+    return output;
+}
+@end
