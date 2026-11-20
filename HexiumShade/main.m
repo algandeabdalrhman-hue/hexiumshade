@@ -12,7 +12,7 @@
 
     // A visible fallback makes it clear the standalone app launched even if
     // UIKit is still transitioning its window into the foreground.
-    UILabel *status = [[UILabel alloc] initWithFrame:CGRectZero];
+    UILabel *status = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
     status.translatesAutoresizingMaskIntoConstraints = NO;
     status.text = @"SHADES";
     status.textColor = [UIColor colorWithRed:0.35 green:0.65 blue:1 alpha:0.32];
