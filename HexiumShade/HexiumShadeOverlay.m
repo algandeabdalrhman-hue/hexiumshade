@@ -215,7 +215,11 @@
     minimize.layer.shadowRadius = 7;
     minimize.titleLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightBold];
     [header addSubview:minimize];
-    [header addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)]];
+    UIPanGestureRecognizer *headerDrag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragPanel:)];
+    // Do not let the drag recognizer swallow taps on the minimize button.
+    headerDrag.cancelsTouchesInView = NO;
+    headerDrag.delaysTouchesBegan = NO;
+    [header addGestureRecognizer:headerDrag];
 }
 
 - (void)buildButtonsWithWidth:(CGFloat)width {
@@ -399,7 +403,14 @@
 }
 
 - (void)importPreset {
-    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypePlainText] asCopy:YES];
+    // INI files are plain-text presets, but Files may not classify the .ini
+    // extension as public.plain-text on every iOS version. Register it explicitly.
+    UTType *iniType = [UTType typeWithFilenameExtension:@"ini" conformingToType:UTTypePlainText];
+    NSMutableArray<UTType *> *allowedTypes = [NSMutableArray arrayWithObject:UTTypePlainText];
+    if (iniType && ![iniType.identifier isEqualToString:UTTypePlainText.identifier]) {
+        [allowedTypes addObject:iniType];
+    }
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:allowedTypes asCopy:YES];
     picker.delegate = self;
     UIViewController *controller = self.panel.window.rootViewController;
     while (controller.presentedViewController) controller = controller.presentedViewController;
@@ -553,13 +564,18 @@
 }
 
 - (void)applyPreset {
-    if (![HexiumShade setQualityPreset:self.selectedQuality]) return;
+    if (![HexiumShade setQualityPreset:self.selectedQuality]) {
+        self.fileDetailLabel.text = @"Could not apply this quality preset";
+        return;
+    }
     if (self.iniLines.count > 0) {
         [NSUserDefaults.standardUserDefaults setObject:[self updatedINI] forKey:@"HexiumShade.importedPresetINI"];
     }
     [NSUserDefaults.standardUserDefaults setObject:self.effects forKey:@"HexiumShade.effectStates"];
     self.qualityLabel.text = [NSString stringWithFormat:@"QUALITY  /  %@  •  SAVED", self.selectedQuality.uppercaseString];
-    self.fileDetailLabel.text = @"Preset and shader switches saved";
+    self.fileDetailLabel.text = self.iniLines.count > 0
+        ? @"Preset values and shader switches saved"
+        : @"Quality and shader switches saved";
     NSLog(@"SHADES: %@ profile and effect switches saved. Render passes require a host-supplied frame.", self.selectedQuality);
 }
 
