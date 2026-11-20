@@ -15,6 +15,7 @@
 @property (nonatomic, strong) UILabel *fileDetailLabel;
 @property (nonatomic, copy) NSString *selectedQuality;
 @property (nonatomic, copy) NSString *importedFileName;
+@property (nonatomic, assign) BOOL cubeWasDragged;
 @end
 
 @implementation HexiumShadeOverlay
@@ -362,12 +363,19 @@
     self.cube.layer.shadowOpacity = 1;
     self.cube.layer.shadowRadius = 12;
     UIPanGestureRecognizer *cubePan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragCube:)];
-    cubePan.cancelsTouchesInView = YES;
+    // Keep the button's tap alive so a stationary tap restores the panel.
+    // A pan still moves the cube; restorePanel ignores the button action after a drag.
+    cubePan.cancelsTouchesInView = NO;
+    cubePan.delaysTouchesBegan = NO;
     [self.cube addGestureRecognizer:cubePan];
     [host addSubview:self.cube];
 }
 
 - (void)restorePanel {
+    if (self.cubeWasDragged) {
+        self.cubeWasDragged = NO;
+        return;
+    }
     UIView *host = self.panel.superview;
     CGFloat width = self.panel.bounds.size.width;
     CGFloat height = self.panel.bounds.size.height;
@@ -381,7 +389,9 @@
 
 - (void)dragCube:(UIPanGestureRecognizer *)gesture {
     UIView *host = self.cube.superview;
+    if (gesture.state == UIGestureRecognizerStateBegan) self.cubeWasDragged = NO;
     CGPoint delta = [gesture translationInView:host];
+    if (fabs(delta.x) > 3.0 || fabs(delta.y) > 3.0) self.cubeWasDragged = YES;
     CGPoint center = self.cube.center;
     center.x += delta.x; center.y += delta.y;
     CGFloat half = 27;
